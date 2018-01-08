@@ -1,4 +1,4 @@
-package server
+package zero
 
 import (
 	"encoding/json"
@@ -6,19 +6,20 @@ import (
 	"log"
 	"runtime/debug"
 	"strconv"
-	"strings"
 
 	"github.com/valyala/fasthttp"
 )
 
+var httpHandlers map[string]func(srv *Server)
+var methodHandlers map[string]func()
+
+// Server is an wrapper around fasthttp
 type Server struct {
 	Ctx  *fasthttp.RequestCtx
 	Path string
 }
 
-var handler func(srv *Server)
-var handlerSocket func(soc *Socket)
-
+// Resp writes any data as JSON to HTTP stream
 func (srv *Server) Resp(data interface{}) {
 	srv.Ctx.SetContentType("application/json; charset=utf8")
 
@@ -34,6 +35,7 @@ func (srv *Server) Resp(data interface{}) {
 	}
 }
 
+// RespJSONP writes any data as JSONP to HTTP stream
 func (srv *Server) RespJSONP(data interface{}) {
 	cbName := srv.GetParam("jsoncallback")
 	jsonData, err := json.Marshal(data)
@@ -44,25 +46,30 @@ func (srv *Server) RespJSONP(data interface{}) {
 	srv.Ctx.SetContentType("application/javascript; charset=utf8")
 }
 
+// HTML responds with HTML
 func (srv *Server) HTML(data []byte) {
 	srv.Ctx.Write(data)
 	srv.Ctx.SetContentType("text/html; charset=utf8")
 }
 
+// JS responds with JS
 func (srv *Server) JS(data []byte) {
 	srv.Ctx.Write(data)
 	srv.Ctx.SetContentType("application/javascript; charset=utf8")
 }
 
+// FileBlob responds with FileBlob
 func (srv *Server) FileBlob(data []byte, contentType string) {
 	srv.Ctx.Write(data)
 	srv.Ctx.SetContentType(contentType)
 }
 
+// File responds with File
 func (srv *Server) File(path string) {
 	srv.Ctx.SendFile(path)
 }
 
+// GetParam request param as string
 func (srv *Server) GetParam(key string) string {
 	args := srv.Ctx.QueryArgs()
 	param := string(args.Peek(key))
@@ -74,6 +81,7 @@ func (srv *Server) GetParam(key string) string {
 	return param
 }
 
+// GetParamInt request param converted to int
 func (srv *Server) GetParamInt(key string) int {
 	args := srv.Ctx.QueryArgs()
 	param, _ := args.GetUint(key)
@@ -81,6 +89,7 @@ func (srv *Server) GetParamInt(key string) int {
 	return int(param)
 }
 
+// GetParamInt64 request param converted to int64
 func (srv *Server) GetParamInt64(key string) int64 {
 	args := srv.Ctx.QueryArgs()
 	param := args.Peek(key)
@@ -91,6 +100,7 @@ func (srv *Server) GetParamInt64(key string) int64 {
 	return i
 }
 
+// Err http api error
 func (srv *Server) Err(code string, text interface{}) {
 	srv.Ctx.SetStatusCode(400)
 	srv.Ctx.SetContentType("application/json; charset=utf8")
@@ -110,51 +120,52 @@ func (srv *Server) Err(code string, text interface{}) {
 		Error interface{} `json:"err"`
 	}{data}
 	encoder.Encode(dataWraped)
+	panic("skip")
 }
+
+// ErrJSONP http api error as JSONP
 func (srv *Server) ErrJSONP(text interface{}) {
 	srv.RespJSONP(struct {
 		Error string `json:"error"`
 	}{
 		Error: fmt.Sprintf("%s", text),
 	})
+	panic("skip")
 }
 
 func serverRequestHandler(ctx *fasthttp.RequestCtx) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("UNCATCHED PANIC", r)
-			debug.PrintStack()
+			apiErrStr := fmt.Sprintf("%v", r)
+			if apiErrStr != "skip" {
+				fmt.Println("UNCATCHED PANIC", r)
+				debug.PrintStack()
+			}
 		}
 	}()
 	srv := Server{Ctx: ctx, Path: string(ctx.Path())}
 
 	path := srv.Path
-	parts := strings.Split(path, "/")
 
-	if len(parts) > 1 && parts[1] == "ws" {
-		soc := Socket{
-			Write: make(chan []byte),
-			Read:  make(chan []byte),
-		}
-		soc.Token = srv.GetParam("token")
-		soc.SessionID = srv.GetParamInt64("session_id")
-		soc.LastEventID = srv.GetParamInt("last_event_id")
-		fmt.Println("AUTH: " + soc.Token)
-		srv.UpgradeWS(&soc)
-		return
+	cb, ok := httpHandlers[path]
+	if ok {
+		cb(&srv)
+	} else {
+		srv.Err("Not found", "method is undefined")
 	}
-
-	handler(&srv)
 }
 
-// StartServe serving files for jarvis-backend
-func StartServe(port string, handlerVal func(srv *Server), handlerSocketVal func(soc *Socket)) {
+// Serve start handling HTTP requests using fasthttp
+func Serve(portHTTP string) {
 	h := serverRequestHandler
 
-	handler = handlerVal
-	handlerSocket = handlerSocketVal
-
-	if err := fasthttp.ListenAndServe(port, h); err != nil {
+	log.Println("Server started, port", portHTTP)
+	if err := fasthttp.ListenAndServe(":"+portHTTP, h); err != nil {
 		log.Fatalf("Error in ListenAndServe: %s", err)
 	}
+}
+
+// Handle add callback to
+func Handle(path string, callback func(srv *Server)) {
+	httpHandlers[path] = callback
 }
