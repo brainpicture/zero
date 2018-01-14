@@ -1,6 +1,7 @@
 package zero
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,13 +11,15 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-var httpHandlers map[string]func(srv *Server)
-var methodHandlers map[string]func()
+//var httpHandlers = map[string]func(srv *Server){}
+
+var httpHandlers = routerTree{}
 
 // Server is an wrapper around fasthttp
 type Server struct {
-	Ctx  *fasthttp.RequestCtx
-	Path string
+	Ctx        *fasthttp.RequestCtx
+	Path       string
+	PathParams map[string]string
 }
 
 // Resp writes any data as JSON to HTTP stream
@@ -26,10 +29,7 @@ func (srv *Server) Resp(data interface{}) {
 	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
 	encoder.SetEscapeHTML(false)
 
-	dataWraped := struct {
-		Resp interface{} `json:"resp"`
-	}{data}
-	err := encoder.Encode(dataWraped)
+	err := encoder.Encode(data)
 	if err != nil {
 		srv.Err("system", err)
 	}
@@ -44,6 +44,13 @@ func (srv *Server) RespJSONP(data interface{}) {
 	}
 	srv.Ctx.Write([]byte(cbName + "(" + string(jsonData) + ")"))
 	srv.Ctx.SetContentType("application/javascript; charset=utf8")
+}
+
+// RespOk returns ok answer, means successfully performed action
+func (srv *Server) RespOk() {
+	srv.Resp(H{
+		"ok": true,
+	})
 }
 
 // HTML responds with HTML
@@ -69,8 +76,8 @@ func (srv *Server) File(path string) {
 	srv.Ctx.SendFile(path)
 }
 
-// GetParam request param as string
-func (srv *Server) GetParam(key string) string {
+// GetParamOpt fetches optional param as string
+func (srv *Server) GetParamOpt(key string) string {
 	args := srv.Ctx.QueryArgs()
 	param := string(args.Peek(key))
 
@@ -78,6 +85,15 @@ func (srv *Server) GetParam(key string) string {
 		param = string(srv.Ctx.PostArgs().Peek(key))
 	}
 
+	return param
+}
+
+// GetParam fetches required param as string
+func (srv *Server) GetParam(key string) string {
+	param := srv.GetParamOpt(key)
+	if param == "" {
+		srv.Err("param", "param "+key+" is required")
+	}
 	return param
 }
 
@@ -100,15 +116,50 @@ func (srv *Server) GetParamInt64(key string) int64 {
 	return i
 }
 
+// GetBody return body of request
+func (srv *Server) GetBody() []byte {
+	return srv.Ctx.Request.Body()
+}
+
+// ErrAuth sends auth error to client
+func (srv *Server) ErrAuth(code string, text interface{}) {
+	srv.SendError(401, code, text)
+}
+
+// ErrForbidden this resource is prohibited for access
+func (srv *Server) ErrForbidden(code string, text interface{}) {
+	srv.SendError(403, code, text)
+}
+
+// ErrNotFound this resource not found
+func (srv *Server) ErrNotFound(code string, text interface{}) {
+	srv.SendError(404, code, text)
+}
+
 // Err http api error
 func (srv *Server) Err(code string, text interface{}) {
-	srv.Ctx.SetStatusCode(400)
+	srv.SendError(400, code, text)
+}
+
+// ErrServer meaning error doesnt depent on request and occur beacause of server error
+func (srv *Server) ErrServer(code string, text interface{}) {
+	srv.SendError(500, code, text)
+}
+
+// ErrMethod emmits when method not allowed
+func (srv *Server) ErrMethod(code string, text interface{}) {
+	srv.SendError(405, code, text)
+}
+
+// SendError http api error
+func (srv *Server) SendError(httpCode int, code string, text interface{}) {
+	srv.Ctx.SetStatusCode(httpCode)
 	srv.Ctx.SetContentType("application/json; charset=utf8")
 
 	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
 	encoder.SetEscapeHTML(false)
 
-	data := struct {
+	dataError := struct {
 		Code string `json:"code"`
 		Desc string `json:"desc"`
 	}{
@@ -116,10 +167,7 @@ func (srv *Server) Err(code string, text interface{}) {
 		Desc: fmt.Sprintf("%s", text),
 	}
 
-	dataWraped := struct {
-		Error interface{} `json:"err"`
-	}{data}
-	encoder.Encode(dataWraped)
+	encoder.Encode(dataError)
 	panic("skip")
 }
 
@@ -133,6 +181,60 @@ func (srv *Server) ErrJSONP(text interface{}) {
 	panic("skip")
 }
 
+// IsPost true if method is Post
+func (srv *Server) IsPost() bool {
+	return srv.Ctx.IsPost()
+}
+
+// IsGet true if method is Get
+func (srv *Server) IsGet() bool {
+	return srv.Ctx.IsGet()
+}
+
+// IsPut true if method is Put
+func (srv *Server) IsPut() bool {
+	return srv.Ctx.IsPut()
+}
+
+// IsPatch true if method is Patch
+func (srv *Server) IsPatch() bool {
+	return bytes.Equal(srv.Ctx.Method(), []byte("PATCH"))
+}
+
+// GetPathParam fetches required param from path
+func (srv *Server) GetPathParam(key string) string {
+	param, ok := srv.PathParams[key]
+	if !ok || param == "" {
+		srv.Err("param", "param "+key+" should be presented in PATH")
+	}
+	return param
+}
+
+// GetPathParamInt fetches required param from path and converts to Int
+func (srv *Server) GetPathParamInt(key string) int64 {
+	param := srv.GetPathParam(key)
+	paramInt, err := strconv.ParseInt(param, 10, 64)
+	if err != nil {
+		srv.Err("param", "param "+key+" presented in PATH should be int")
+	}
+	return paramInt
+}
+
+// GetCookie will return cookie by name
+func (srv *Server) GetCookie(key string) string {
+	return string(srv.Ctx.Request.Header.Cookie(key))
+}
+
+// GetHeader will return header by name
+func (srv *Server) GetHeader(key string) string {
+	return string(srv.Ctx.Request.Header.Peek(key))
+}
+
+// GetHeader will return header by name
+func (srv *Server) Method() string {
+	return string(srv.Ctx.Method())
+}
+
 func serverRequestHandler(ctx *fasthttp.RequestCtx) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -144,15 +246,19 @@ func serverRequestHandler(ctx *fasthttp.RequestCtx) {
 		}
 	}()
 	srv := Server{Ctx: ctx, Path: string(ctx.Path())}
-
-	path := srv.Path
-
-	cb, ok := httpHandlers[path]
-	if ok {
-		cb(&srv)
-	} else {
-		srv.Err("Not found", "method is undefined")
+	method, ok := Methods[srv.Method()]
+	if !ok {
+		srv.Err("invalid_request", "Unsupported method")
+		return
 	}
+
+	cb, params, err := httpHandlers.Route(method, srv.Path)
+	if cb == nil {
+		srv.Err("not_found", err)
+		return
+	}
+	srv.PathParams = params
+	cb(&srv)
 }
 
 // Serve start handling HTTP requests using fasthttp
@@ -167,5 +273,5 @@ func Serve(portHTTP string) {
 
 // Handle add callback to
 func Handle(path string, callback func(srv *Server)) {
-	httpHandlers[path] = callback
+	httpHandlers.Handle(Methods["*"], path, callback)
 }

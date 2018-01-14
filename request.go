@@ -70,9 +70,9 @@ func (req *Request) Param(name string) string {
 	} else {
 		panic("param:" + name + " is undefined")
 	}
-	return ""
 }
 
+// ParamFloat get param and check type for flost
 func (req *Request) ParamFloat(name string) float64 {
 	paramsRaw := req.Params.(map[string]interface{})
 	if paramsRaw == nil {
@@ -96,9 +96,9 @@ func (req *Request) ParamFloat(name string) float64 {
 	} else {
 		panic("param:" + name + " is undefined")
 	}
-	return 0
 }
 
+// ParamOpt fetches optional param
 func (req *Request) ParamOpt(name string) string {
 	paramsRaw := req.Params.(map[string]interface{})
 	if paramsRaw != nil {
@@ -121,17 +121,17 @@ func (req *Request) ParamIntOpt(name string) int {
 			resp, okInt := param.(int)
 			if okInt {
 				return resp
-			} else {
-				respStr, okStr := param.(string)
-				if okStr {
-					return I(respStr)
-				}
+			}
+			respStr, okStr := param.(string)
+			if okStr {
+				return I(respStr)
 			}
 		}
 	}
 	return 0
 }
 
+// ParamInt parse param return int
 func (req *Request) ParamInt(name string) int {
 	paramsRaw := req.Params.(map[string]interface{})
 	if paramsRaw != nil {
@@ -152,5 +152,4 @@ func (req *Request) ParamInt(name string) int {
 	} else {
 		panic("param:" + name + " is undefined")
 	}
-	return 0
 }

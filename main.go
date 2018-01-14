@@ -13,6 +13,9 @@ import (
 	"unicode"
 )
 
+// H allow to describe custom json easily
+type H map[string]interface{}
+
 // J joins whatever passed to an string
 func J(a ...interface{}) string {
 	out := ""
@@ -83,7 +86,7 @@ func IsInt(s string) bool {
 	return true
 }
 
-// SplitToInts splits any string to slice of int using seporator
+// SplitToInts splits any string to slice of int using separator
 func SplitToInts(str string, sep string) (res []int) {
 	chunks := strings.Split(str, sep)
 

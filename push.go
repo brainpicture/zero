@@ -53,7 +53,7 @@ func PushSendIPhone(deviceID string, msg string) {
 	res, err := client.Push(notification)
 
 	if err != nil {
-		fmt.Printf("Error:", err)
+		fmt.Println("Error:", err)
 	}
 
 	fmt.Printf("PUSH SENT: %v %v %v\n", res.StatusCode, res.ApnsID, res.Reason)
