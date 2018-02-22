@@ -63,6 +63,11 @@ func (p *routerTree) getHandler(method int, parts []string, values []string) (fu
 			h, ok := p.Handler[method]
 			if ok {
 				return h, p.Keys, values, nil
+			} else {
+				h, ok := p.Handler[Methods["*"]]
+				if ok {
+					return h, p.Keys, values, nil
+				}
 			}
 		}
 		supported := []string{}

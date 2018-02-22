@@ -9,52 +9,87 @@ import (
 	"github.com/sideshow/apns2/certificate"
 )
 
-var AndroidServerKey = ""
+var androidServerKey = ""
+var iosClient = apns2.Client{}
 
-type ApnsMessage struct {
+type apnsAlert struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+}
+
+type apnsMessage struct {
 	Aps struct {
-		Alert string `json:"alert"`
-		Sound string `json:"sound"`
+		Title string    `json:"title"`
+		Alert apnsAlert `json:"alert"`
+		Sound string    `json:"sound"`
 	} `json:"aps"`
 }
 
-func PushSendAndroid(deviceID string, msg string) {
-	data := map[string]string{
+// PushSendAndroid sends push to android
+func PushSendAndroid(deviceID string, title string, msg string) {
+	/*data := map[string]string{
 		"msg": msg,
-	}
+	}*/
+	androidClient := fcm.NewFcmClient(androidServerKey)
+	androidClient.SetPriority(fcm.Priority_HIGH)
+	androidClient.Message.To = deviceID
+	//androidClient.NewFcmMsgTo(deviceID, data)
+	androidClient.SetNotificationPayload(&fcm.NotificationPayload{
+		Title: title,
+		Body:  msg,
+	})
 
-	c := fcm.NewFcmClient(AndroidServerKey)
-	c.NewFcmMsgTo(deviceID, data)
-
-	_, err := c.Send()
+	status, err := androidClient.Send()
 
 	if err != nil {
 		fmt.Println("push send error", err)
 	}
+	status.PrintResults()
 }
 
-func PushSendIPhone(deviceID string, msg string) {
-	cert, err := certificate.FromP12File("./certificates/cert.p12", "")
-	if err != nil {
-		fmt.Printf("Cert Error:", err)
-	}
+// PushSendIPhone send push to iphone
+func PushSendIPhone(deviceID string, title string, text string, sound string) {
 
 	notification := &apns2.Notification{}
 	notification.DeviceToken = deviceID
 	//notification.Topic = "com.sideshow.Apns2"
 
-	apsMsg := ApnsMessage{}
-	apsMsg.Aps.Alert = msg
-	apsMsg.Aps.Sound = "default"
+	apsMsg := apnsMessage{}
+	apsMsg.Aps.Alert = apnsAlert{
+		Title: title,
+		Body:  text,
+	}
+	if sound == "" {
+		sound = "default"
+	}
+	apsMsg.Aps.Sound = sound
 
 	notification.Payload, _ = json.Marshal(apsMsg) // See Payload section below
 
-	client := apns2.NewClient(cert).Development()
-	res, err := client.Push(notification)
+	res, err := iosClient.Push(notification)
 
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
 
 	fmt.Printf("PUSH SENT: %v %v %v\n", res.StatusCode, res.ApnsID, res.Reason)
+}
+
+// PushInitIOS init push notifications for ios
+func PushInitIOS(p12File string, password string, development bool) {
+	cert, err := certificate.FromP12File(p12File, password)
+	if err != nil {
+		fmt.Println("Cert Error:", err)
+		return
+	}
+	if development {
+		iosClient = *apns2.NewClient(cert).Development()
+	} else {
+		iosClient = *apns2.NewClient(cert).Production()
+	}
+}
+
+// PushInitAndroid init push notifications for android
+func PushInitAndroid(serverKey string) {
+	androidServerKey = serverKey
 }

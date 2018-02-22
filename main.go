@@ -58,8 +58,8 @@ func I64(a string) int64 {
 }
 
 // Now returns unixtime
-func Now() int {
-	return int(time.Now().Unix())
+func Now() int64 {
+	return time.Now().Unix()
 }
 
 // Split divide string into slice by an of chars from splits string
@@ -98,6 +98,34 @@ func SplitToInts(str string, sep string) (res []int) {
 		res = append(res, num)
 	}
 	return res
+}
+
+// SplitDoubleInt64 return two int64 using
+func SplitDoubleInt64(str string, sep string) (int64, int64) {
+	n1 := int64(0)
+	n2 := int64(0)
+	chunks := strings.Split(str, sep)
+	if len(chunks) > 0 {
+		n1 = I64(chunks[0])
+		if len(chunks) > 1 {
+			n2 = I64(chunks[1])
+		}
+	}
+	return n1, n2
+}
+
+// SplitDoubleInt return two int using
+func SplitDoubleInt(str string, sep string) (int, int) {
+	n1 := 0
+	n2 := 0
+	chunks := strings.Split(str, sep)
+	if len(chunks) > 0 {
+		n1 = I(chunks[0])
+		if len(chunks) > 1 {
+			n2 = I(chunks[1])
+		}
+	}
+	return n1, n2
 }
 
 // Log prints any objects
@@ -172,4 +200,32 @@ func SortByValueInt(m map[string]int) {
 			fmt.Printf("%s, %d\n", s, k)
 		}
 	}
+}
+
+// Trim checks string is not longet than provided length and shorted it with .. postfix
+func Trim(str string, length int) string {
+	if len(str) > length {
+		return str[:length-2] + ".."
+	}
+	return str
+}
+
+// DeleteFromStrings removes element from items
+func DeleteFromStrings(items []string, toRemove string) []string {
+	for k, v := range items {
+		if v == toRemove {
+			return append(items[:k], items[k+1:]...)
+		}
+	}
+	return items
+}
+
+// OneOf check is element presented inside list
+func OneOf(el string, items ...string) bool {
+	for _, v := range items {
+		if el == v {
+			return true
+		}
+	}
+	return false
 }

@@ -1,12 +1,15 @@
 package zero
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 	"runtime/debug"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/valyala/fasthttp"
 )
@@ -97,10 +100,41 @@ func (srv *Server) GetParam(key string) string {
 	return param
 }
 
+// GetParamPagination parse param for pagination
+func (srv *Server) GetParamPagination(defCount int) *Pagination {
+	result := Pagination{}
+	param := srv.GetParamOpt("from")
+	count := srv.GetParamInt("count")
+	if count == 0 {
+		count = defCount
+	}
+	result.Count = count
+	if param == "" {
+		return &result
+	}
+	rows := strings.Split(param, ":")
+	offset, err := strconv.Atoi(rows[0])
+	if err != nil {
+		srv.Err("param", "param from has invalid format for pagination")
+	}
+	result.Offset = offset
+	if len(rows) > 1 {
+		objID, err := strconv.ParseInt(rows[1], 10, 64)
+		if err != nil {
+			srv.Err("param", "param from has invalid format for pagination")
+		}
+		result.ObjectID = objID
+	}
+	return &result
+}
+
 // GetParamInt request param converted to int
 func (srv *Server) GetParamInt(key string) int {
 	args := srv.Ctx.QueryArgs()
-	param, _ := args.GetUint(key)
+	param, err := args.GetUint(key)
+	if err != nil {
+		return 0
+	}
 
 	return int(param)
 }
@@ -114,6 +148,17 @@ func (srv *Server) GetParamInt64(key string) int64 {
 		i = 0
 	}
 	return i
+}
+
+// GetParamFloat request param converted to float64
+func (srv *Server) GetParamFloat(key string) float64 {
+	args := srv.Ctx.QueryArgs()
+	param, err := args.GetUfloat(key)
+	if err != nil {
+		return 0
+	}
+
+	return param
 }
 
 // GetBody return body of request
@@ -201,6 +246,21 @@ func (srv *Server) IsPatch() bool {
 	return bytes.Equal(srv.Ctx.Method(), []byte("PATCH"))
 }
 
+// GetFile fetches file from multipart
+func (srv *Server) GetFile(name string) *File {
+	fmt.Println("get file here")
+	if !srv.IsPost() {
+		srv.Err("upload_file_error", "request method should be POST")
+		return nil
+	}
+	fileHeader, err := srv.Ctx.FormFile(name)
+	if err != nil {
+		srv.Err("upload_file_error", err)
+		return nil
+	}
+	return &File{Handler: fileHeader}
+}
+
 // GetPathParam fetches required param from path
 func (srv *Server) GetPathParam(key string) string {
 	param, ok := srv.PathParams[key]
@@ -230,9 +290,56 @@ func (srv *Server) GetHeader(key string) string {
 	return string(srv.Ctx.Request.Header.Peek(key))
 }
 
-// GetHeader will return header by name
+// Method will return method from requiest header
 func (srv *Server) Method() string {
 	return string(srv.Ctx.Method())
+}
+
+// GetSessionID return Session-ID hearder int64
+func (srv *Server) GetSessionID() int64 {
+	sessionIDStr := srv.GetHeader("Session-ID")
+	return I64(sessionIDStr)
+}
+
+// EventSource starts an event server
+func (srv *Server) EventSource(callback func(*ServerEvents)) {
+	srv.Ctx.SetContentType("text/event-stream; charset=UTF-8")
+	srv.Ctx.Response.Header.Set("Cache-Control", "no-cache")
+	srv.Ctx.Response.Header.Set("Connection", "keep-alive")
+	srv.Ctx.Response.Header.Set("Transfer-Encoding", "chunked")
+	lastEventIDStr := srv.GetHeader("Last-Event-ID")
+	sessionID := srv.GetSessionID()
+
+	srv.Ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
+		se := ServerEvents{
+			Writer:    w,
+			EventID:   I64(lastEventIDStr),
+			SessionID: sessionID,
+		}
+
+		callback(&se)
+	})
+}
+
+// Event sends event to the user
+func (srv *Server) Event(data interface{}) {
+	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
+	encoder.SetEscapeHTML(false)
+
+	err := encoder.Encode(data)
+	if err != nil {
+		srv.Err("system", err)
+	}
+}
+
+// ParseStrList parses []string from json body
+func (srv *Server) ParseStrList() []string {
+	input := []string{}
+	err := json.Unmarshal(srv.GetBody(), &input)
+	if err != nil {
+		srv.Err("user_invalid", "Body should be json list of strings")
+	}
+	return input
 }
 
 func serverRequestHandler(ctx *fasthttp.RequestCtx) {
@@ -266,7 +373,9 @@ func Serve(portHTTP string) {
 	h := serverRequestHandler
 
 	log.Println("Server started, port", portHTTP)
-	if err := fasthttp.ListenAndServe(":"+portHTTP, h); err != nil {
+	addr := ":" + portHTTP
+	fasthttp.DialTimeout(addr, 24*time.Hour)
+	if err := fasthttp.ListenAndServe(addr, h); err != nil {
 		log.Fatalf("Error in ListenAndServe: %s", err)
 	}
 }
