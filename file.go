@@ -2,7 +2,6 @@ package zero
 
 import (
 	"errors"
-	"fmt"
 	"image"
 	_ "image/jpeg" // need to fetch supported formats
 	_ "image/png"  // png as well
@@ -43,8 +42,8 @@ func (f *File) GetImageDimension() (int, int, error) {
 		return 0, 0, errors.New("File open error")
 	}
 
-	image, format, err := image.DecodeConfig(file)
-	fmt.Println("image decode", file, format, image, err)
+	image, _, err := image.DecodeConfig(file)
+
 	if err != nil {
 		return 0, 0, err
 	}

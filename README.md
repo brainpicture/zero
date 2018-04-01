@@ -19,3 +19,18 @@ zero.Handle("/websocket", func(srv *zero.Server) {
 })
 zero.Serve("8080")
 ```
+
+## Modules
+
+### Stat module
+Stat module allow you to absorb app stats and get them once every configured period of time
+Example:
+```
+stat := zero.Stat{}
+stat.Init(time.Minute*5, func(eventName string, counter zero.StatCounter) {
+  fmt.Println("for every key like", eventName, "you will ge counter object")
+})
+
+// adding event to stat
+stat.Inc("some_event_name")
+```

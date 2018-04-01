@@ -220,6 +220,16 @@ func DeleteFromStrings(items []string, toRemove string) []string {
 	return items
 }
 
+// DeleteFromInt64 removes element from items
+func DeleteFromInt64(items []int64, toRemove int64) []int64 {
+	for k, v := range items {
+		if v == toRemove {
+			return append(items[:k], items[k+1:]...)
+		}
+	}
+	return items
+}
+
 // OneOf check is element presented inside list
 func OneOf(el string, items ...string) bool {
 	for _, v := range items {
@@ -228,4 +238,10 @@ func OneOf(el string, items ...string) bool {
 		}
 	}
 	return false
+}
+
+// Plot2D is an basic struct for 2d plot representation
+type Plot2D struct {
+	Labels []string `json:"labels"`
+	Points []int64  `json:"points"`
 }

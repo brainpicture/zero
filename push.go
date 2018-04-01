@@ -12,6 +12,12 @@ import (
 var androidServerKey = ""
 var iosClient = apns2.Client{}
 
+type Push struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+	Data  H      `json:"data"`
+}
+
 type apnsAlert struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
@@ -25,54 +31,41 @@ type apnsMessage struct {
 	} `json:"aps"`
 }
 
-// PushSendAndroid sends push to android
-func PushSendAndroid(deviceID string, title string, msg string) {
-	/*data := map[string]string{
-		"msg": msg,
-	}*/
-	androidClient := fcm.NewFcmClient(androidServerKey)
-	androidClient.SetPriority(fcm.Priority_HIGH)
-	androidClient.Message.To = deviceID
-	//androidClient.NewFcmMsgTo(deviceID, data)
-	androidClient.SetNotificationPayload(&fcm.NotificationPayload{
-		Title: title,
-		Body:  msg,
-	})
+// PushSend send push to the device
+func PushSend(platform, deviceID string, push *Push) {
+	if platform == "android" {
+		//zero.PushSendAndroid(sett.DeviceID, title, msg)
+		client := fcm.NewFcmClient(androidServerKey)
+		client.SetPriority(fcm.Priority_HIGH)
+		client.NewFcmMsgTo(deviceID, push)
+		_, err := client.Send()
+		if err != nil {
+			fmt.Println("android push send error", err)
+		}
+	} else if platform == "ios" {
+		notification := &apns2.Notification{}
+		notification.DeviceToken = deviceID
+		apsMsg := H{
+			"aps": H{
+				"sound": "default",
+				"alert": apnsAlert{
+					Title: push.Title,
+					Body:  push.Body,
+				},
+			},
+			"data": push.Data,
+		}
 
-	status, err := androidClient.Send()
+		notification.Payload, _ = json.Marshal(apsMsg) // See Payload section below
 
-	if err != nil {
-		fmt.Println("push send error", err)
+		//fmt.Println("push Sending", string(notification.Payload.([]byte)))
+		_, err := iosClient.Push(notification)
+		//fmt.Println("push Sent", resp, err)
+
+		if err != nil {
+			fmt.Println("Error:", err)
+		}
 	}
-	status.PrintResults()
-}
-
-// PushSendIPhone send push to iphone
-func PushSendIPhone(deviceID string, title string, text string, sound string) {
-
-	notification := &apns2.Notification{}
-	notification.DeviceToken = deviceID
-	//notification.Topic = "com.sideshow.Apns2"
-
-	apsMsg := apnsMessage{}
-	apsMsg.Aps.Alert = apnsAlert{
-		Title: title,
-		Body:  text,
-	}
-	if sound == "" {
-		sound = "default"
-	}
-	apsMsg.Aps.Sound = sound
-
-	notification.Payload, _ = json.Marshal(apsMsg) // See Payload section below
-
-	res, err := iosClient.Push(notification)
-
-	if err != nil {
-		fmt.Println("Error:", err)
-	}
-
-	fmt.Printf("PUSH SENT: %v %v %v\n", res.StatusCode, res.ApnsID, res.Reason)
 }
 
 // PushInitIOS init push notifications for ios

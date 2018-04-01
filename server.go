@@ -290,6 +290,11 @@ func (srv *Server) GetHeader(key string) string {
 	return string(srv.Ctx.Request.Header.Peek(key))
 }
 
+// GetUserAgent returns user agent header
+func (srv *Server) GetUserAgent() string {
+	return srv.GetHeader("User-Agent")
+}
+
 // Method will return method from requiest header
 func (srv *Server) Method() string {
 	return string(srv.Ctx.Method())
@@ -342,35 +347,37 @@ func (srv *Server) ParseStrList() []string {
 	return input
 }
 
-func serverRequestHandler(ctx *fasthttp.RequestCtx) {
-	defer func() {
-		if r := recover(); r != nil {
-			apiErrStr := fmt.Sprintf("%v", r)
-			if apiErrStr != "skip" {
-				fmt.Println("UNCATCHED PANIC", r)
-				debug.PrintStack()
-			}
-		}
-	}()
-	srv := Server{Ctx: ctx, Path: string(ctx.Path())}
-	method, ok := Methods[srv.Method()]
-	if !ok {
-		srv.Err("invalid_request", "Unsupported method")
-		return
-	}
-
-	cb, params, err := httpHandlers.Route(method, srv.Path)
-	if cb == nil {
-		srv.Err("not_found", err)
-		return
-	}
-	srv.PathParams = params
-	cb(&srv)
-}
-
 // Serve start handling HTTP requests using fasthttp
 func Serve(portHTTP string) {
-	h := serverRequestHandler
+	h := func(ctx *fasthttp.RequestCtx) {
+		defer func() {
+			if r := recover(); r != nil {
+				apiErrStr := fmt.Sprintf("%v", r)
+				if apiErrStr != "skip" {
+					fmt.Println("UNCATCHED PANIC", r)
+					debug.PrintStack()
+				}
+			}
+		}()
+		start := time.Now()
+		srv := Server{Ctx: ctx, Path: string(ctx.Path())}
+		methodStr := srv.Method()
+		method, ok := Methods[methodStr]
+		if !ok {
+			srv.Err("invalid_request", "Unsupported method")
+			return
+		}
+
+		cb, params, err := httpHandlers.Route(method, srv.Path)
+		if cb == nil {
+			srv.Err("not_found", err)
+			return
+		}
+		srv.PathParams = params
+		cb(&srv)
+		elapsed := time.Since(start)
+		fmt.Println("page "+methodStr+" "+srv.Path+" generated in", elapsed)
+	}
 
 	log.Println("Server started, port", portHTTP)
 	addr := ":" + portHTTP
