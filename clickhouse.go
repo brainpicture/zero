@@ -15,6 +15,9 @@ type ClickHouseCtx struct {
 	DB *sql.DB
 }
 
+// ClickHouseDays days data representation
+type ClickHouseDays map[int64]int64
+
 // ClickHouse creates new database connection
 func ClickHouse(dataSourceName string) *ClickHouseCtx {
 	connection, err := sql.Open("clickhouse", dataSourceName)
@@ -57,13 +60,16 @@ func (t *ClickHouseTable) flush() {
 		return
 	}
 	tx, _ := t.ctx.DB.Begin()
-	fmt.Println("flushing db", t.prepareStr)
-	stmt, _ := tx.Prepare(t.prepareStr)
+	stmt, err := tx.Prepare(t.prepareStr)
+	if err != nil {
+		fmt.Println("CLICKHOUSE ERROR", err)
+		return
+	}
 	for _, v := range t.rows {
 		if _, err := stmt.Exec(v...); err != nil {
 			fmt.Println("failed", err, v)
 		} else {
-			fmt.Println("ok", v)
+			//fmt.Println("ok", v)
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -123,28 +129,57 @@ func (t *ClickHouseTable) Count(sql string) int64 {
 }
 
 // DateInt allow you to fetch 2d plot data
-func (t *ClickHouseTable) DateInt(sql string) *Plot2D {
-	res := Plot2D{
-		Labels: []string{},
-		Points: []int64{},
-	}
+func (t *ClickHouseTable) DateInt(sql string) ClickHouseDays {
+	res := ClickHouseDays{}
 	rows, err := t.ctx.DB.Query(sql)
 	if err != nil {
 		fmt.Println("Query error", err)
-		return &res
+		return res
 	}
+
 	for rows.Next() {
 		var date time.Time
 		var val int64
 		err := rows.Scan(&date, &val)
+		fmt.Println("date fetched", date)
 		if err != nil {
 			fmt.Println("fetch error", err)
 			continue
 		}
-		res.Labels = append(res.Labels, date.Format("Mon 2"))
-		res.Points = append(res.Points, val)
+		res[date.Unix()] = val
 	}
-	return &res
+	return res
+}
+
+// ListH return list of rowes from clickhouse
+func (t *ClickHouseTable) ListH(sql string) []H {
+	res := []H{}
+	rows, err := t.ctx.DB.Query(sql)
+	if err != nil {
+		fmt.Println("Query error", err)
+		return res
+	}
+	colNames, _ := rows.Columns()
+
+	for rows.Next() {
+		readCols := make([]interface{}, len(colNames))
+		writeCols := make([]string, len(colNames))
+		for i := range writeCols {
+			readCols[i] = &writeCols[i]
+		}
+		err := rows.Scan(readCols...)
+
+		if err != nil {
+			fmt.Println("fetch error", err)
+			continue
+		}
+		row := H{}
+		for i, name := range colNames {
+			row[name] = readCols[i]
+		}
+		res = append(res, row)
+	}
+	return res
 }
 
 // Table creates clickhouse table
@@ -163,7 +198,43 @@ func ClickHouseDate() clickhouse.Date {
 	return clickhouse.Date(time.Now())
 }
 
+// ClickHouseCustomDate return curent date
+func ClickHouseCustomDate(sec int64) clickhouse.Date {
+	return clickhouse.Date(time.Unix(sec, 0))
+}
+
 // ClickHouseDateTime return curent time
 func ClickHouseDateTime() clickhouse.DateTime {
 	return clickhouse.DateTime(time.Now())
+}
+
+// ClickHouseCustomDateTime return curent time
+func ClickHouseCustomDateTime(sec int64) clickhouse.DateTime {
+	return clickhouse.DateTime(time.Unix(sec, 0))
+}
+
+// Plot plots graph
+func (days ClickHouseDays) Plot(from int, to int) *Plot2D {
+	res := Plot2D{
+		Labels: []string{},
+		Points: []int64{},
+	}
+	fmt.Println("DAYS", days)
+	day := from
+	t := time.Now()
+	today := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix()
+	for day <= to {
+		d := today + int64(day*86400)
+		val := int64(0)
+		plus, ok := days[d]
+		fmt.Println("date fixed", d, "got", plus, "and", ok)
+		if ok {
+			val += plus
+		}
+		res.Labels = append(res.Labels, time.Unix(d, 0).Format("Mon 2"))
+		res.Points = append(res.Points, val)
+
+		day++
+	}
+	return &res
 }

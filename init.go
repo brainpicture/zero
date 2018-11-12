@@ -4,8 +4,10 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,6 +17,41 @@ import (
 
 // H allow to describe custom json easily
 type H map[string]interface{}
+
+var reURL *regexp.Regexp
+
+// String return field as string
+func (h H) String(field string) string {
+	val, ok := h[field]
+	if ok {
+		return J(val)
+	}
+	return ""
+}
+
+// Int return field as int
+func (h H) Int(field string) int {
+	val, ok := h[field]
+	if ok {
+		res, ok := val.(int)
+		if ok {
+			return res
+		}
+	}
+	return 0
+}
+
+// Int64 return field as int64
+func (h H) Int64(field string) int64 {
+	val, ok := h[field]
+	if ok {
+		res, ok := val.(int64)
+		if ok {
+			return res
+		}
+	}
+	return int64(0)
+}
 
 // J joins whatever passed to an string
 func J(a ...interface{}) string {
@@ -38,7 +75,12 @@ func J(a ...interface{}) string {
 				out += "false"
 			}
 		case []byte:
-			out += string(out)
+			out += string(t)
+		case byte:
+			out += string([]byte{t})
+		default:
+			bytes, _ := json.Marshal(arg)
+			out += string(bytes)
 		}
 	}
 	return out
@@ -57,9 +99,20 @@ func I64(a string) int64 {
 	return res
 }
 
+// UI64 converts string to int64 without errors
+func UI64(a string) uint64 {
+	res, _ := strconv.ParseUint(a, 10, 64)
+	return res
+}
+
 // Now returns unixtime
 func Now() int64 {
 	return time.Now().Unix()
+}
+
+// Now64 returns full time
+func Now64() int64 {
+	return time.Now().UnixNano()
 }
 
 // Split divide string into slice by an of chars from splits string
@@ -86,12 +139,26 @@ func IsInt(s string) bool {
 	return true
 }
 
-// SplitToInts splits any string to slice of int using separator
-func SplitToInts(str string, sep string) (res []int) {
+// SplitToInt splits any string to slice of int using separator
+func SplitToInt(str string, sep string) (res []int) {
 	chunks := strings.Split(str, sep)
 
 	for _, chunk := range chunks {
 		num, err := strconv.Atoi(chunk)
+		if err != nil {
+			continue
+		}
+		res = append(res, num)
+	}
+	return res
+}
+
+// SplitToInt64 splits any string to slice of int using separator
+func SplitToInt64(str string, sep string) (res []int64) {
+	chunks := strings.Split(str, sep)
+
+	for _, chunk := range chunks {
+		num, err := strconv.ParseInt(chunk, 10, 0)
 		if err != nil {
 			continue
 		}
@@ -114,6 +181,48 @@ func SplitDoubleInt64(str string, sep string) (int64, int64) {
 	return n1, n2
 }
 
+// SplitDoubleString return two strings with splitting
+func SplitDoubleString(str string, sep string) (n1 string, n2 string) {
+	chunks := strings.SplitN(str, sep, 2)
+	if len(chunks) > 0 {
+		n1 = chunks[0]
+		if len(chunks) > 1 {
+			n2 = chunks[1]
+		}
+	}
+	return n1, n2
+}
+
+// SplitTrippleString return three string
+func SplitTrippleString(str string, sep string) (n1, n2, n3 string) {
+	chunks := strings.SplitN(str, sep, 3)
+	if len(chunks) > 0 {
+		n1 = chunks[0]
+		if len(chunks) > 1 {
+			n2 = chunks[1]
+		}
+		if len(chunks) > 2 {
+			n3 = chunks[2]
+		}
+	}
+	return n1, n2, n3
+}
+
+// SplitTrippleInt64 return three int64 by splitting sting
+func SplitTrippleInt64(str string, sep string) (n1, n2, n3 int64) {
+	chunks := strings.SplitN(str, sep, 3)
+	if len(chunks) > 0 {
+		n1 = I64(chunks[0])
+		if len(chunks) > 1 {
+			n2 = I64(chunks[1])
+		}
+		if len(chunks) > 2 {
+			n3 = I64(chunks[2])
+		}
+	}
+	return n1, n2, n3
+}
+
 // SplitDoubleInt return two int using
 func SplitDoubleInt(str string, sep string) (int, int) {
 	n1 := 0
@@ -123,6 +232,34 @@ func SplitDoubleInt(str string, sep string) (int, int) {
 		n1 = I(chunks[0])
 		if len(chunks) > 1 {
 			n2 = I(chunks[1])
+		}
+	}
+	return n1, n2
+}
+
+// SplitIntString return int and string
+func SplitIntString(str string, sep string) (int, string) {
+	n1 := 0
+	n2 := ""
+	chunks := strings.SplitN(str, sep, 2)
+	if len(chunks) > 0 {
+		n1 = I(chunks[0])
+		if len(chunks) > 1 {
+			n2 = chunks[1]
+		}
+	}
+	return n1, n2
+}
+
+// SplitInt64String return int64 and string
+func SplitInt64String(str string, sep string) (int64, string) {
+	n1 := int64(0)
+	n2 := ""
+	chunks := strings.SplitN(str, sep, 2)
+	if len(chunks) > 0 {
+		n1 = I64(chunks[0])
+		if len(chunks) > 1 {
+			n2 = chunks[1]
 		}
 	}
 	return n1, n2
@@ -204,8 +341,9 @@ func SortByValueInt(m map[string]int) {
 
 // Trim checks string is not longet than provided length and shorted it with .. postfix
 func Trim(str string, length int) string {
-	if len(str) > length {
-		return str[:length-2] + ".."
+	chars := []rune(str)
+	if len(chars) > length {
+		return string(chars[:length-2]) + ".."
 	}
 	return str
 }
@@ -244,4 +382,39 @@ func OneOf(el string, items ...string) bool {
 type Plot2D struct {
 	Labels []string `json:"labels"`
 	Points []int64  `json:"points"`
+}
+
+// EncodeInt64 encodes int using passed symbols
+func EncodeInt64(val int64, symbols string) string {
+	l := int64(len(symbols))
+	link := ""
+
+	for val >= 1 {
+		link += string(symbols[int(val%l)])
+		val /= l
+	}
+	return link
+}
+
+// DecodeInt64 decodes int using passed symbols
+func DecodeInt64(link string, symbols string) int64 {
+	val := int64(0)
+	l := int64(len(symbols))
+	pow := int64(1)
+	for _, symbol := range link {
+		i := strings.Index(symbols, string(symbol))
+		val += int64(i) * pow
+		pow *= l
+	}
+	return val
+}
+
+// ParseURLs will return links in text
+func ParseURLs(text string) []string {
+	matches := reURL.FindAllString(text, -1)
+	return matches
+}
+
+func init() {
+	reURL = regexp.MustCompile(`((http|ftp|https):\/\/)?([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?`)
 }

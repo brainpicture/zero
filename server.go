@@ -16,13 +16,25 @@ import (
 
 //var httpHandlers = map[string]func(srv *Server){}
 
-var httpHandlers = routerTree{}
+//var httpHandlers = routerTree{}
+
+// HTTP main type for http server
+type HTTP struct {
+	handlers  routerTree
+	OnError   func(srv *Server, name, text string)
+	OnPanic   func(srv *Server, stackTrace string)
+	OnRequest func(srv *Server)
+}
 
 // Server is an wrapper around fasthttp
 type Server struct {
-	Ctx        *fasthttp.RequestCtx
-	Path       string
-	PathParams map[string]string
+	Ctx         *fasthttp.RequestCtx
+	Path        string
+	PathParams  map[string]string
+	ReferenceID int64 // used to point out userID during session
+	http        *HTTP
+	OnResponse  func(interface{})
+	OnFail      func(int, string, interface{})
 }
 
 // Resp writes any data as JSON to HTTP stream
@@ -36,6 +48,9 @@ func (srv *Server) Resp(data interface{}) {
 	if err != nil {
 		srv.Err("system", err)
 	}
+	if srv.OnResponse != nil {
+		srv.OnResponse(data)
+	}
 }
 
 // RespJSONP writes any data as JSONP to HTTP stream
@@ -47,6 +62,9 @@ func (srv *Server) RespJSONP(data interface{}) {
 	}
 	srv.Ctx.Write([]byte(cbName + "(" + string(jsonData) + ")"))
 	srv.Ctx.SetContentType("application/javascript; charset=utf8")
+	if srv.OnResponse != nil {
+		srv.OnResponse(data)
+	}
 }
 
 // RespOk returns ok answer, means successfully performed action
@@ -79,6 +97,16 @@ func (srv *Server) File(path string) {
 	srv.Ctx.SendFile(path)
 }
 
+// GetParams return all params
+func (srv *Server) GetParams() map[string]string {
+	args := srv.Ctx.QueryArgs()
+	res := map[string]string{}
+	args.VisitAll(func(key []byte, value []byte) {
+		res[string(key)] = string(value)
+	})
+	return res
+}
+
 // GetParamOpt fetches optional param as string
 func (srv *Server) GetParamOpt(key string) string {
 	args := srv.Ctx.QueryArgs()
@@ -105,6 +133,7 @@ func (srv *Server) GetParamPagination(defCount int) *Pagination {
 	result := Pagination{}
 	param := srv.GetParamOpt("from")
 	count := srv.GetParamInt("count")
+	result.Reverse = srv.GetParamBool("reverse")
 	if count == 0 {
 		count = defCount
 	}
@@ -112,12 +141,12 @@ func (srv *Server) GetParamPagination(defCount int) *Pagination {
 	if param == "" {
 		return &result
 	}
+	result.from = param
 	rows := strings.Split(param, ":")
-	offset, err := strconv.Atoi(rows[0])
-	if err != nil {
-		srv.Err("param", "param from has invalid format for pagination")
-	}
-	result.Offset = offset
+
+	subrows := strings.Split(rows[0], ";")
+	result.offset = I64(subrows[0])
+
 	if len(rows) > 1 {
 		objID, err := strconv.ParseInt(rows[1], 10, 64)
 		if err != nil {
@@ -161,6 +190,16 @@ func (srv *Server) GetParamFloat(key string) float64 {
 	return param
 }
 
+// GetParamBool request param converted to bool
+func (srv *Server) GetParamBool(key string) bool {
+	args := srv.Ctx.QueryArgs()
+	param := string(args.Peek(key))
+	if param == "1" || param == "true" || param == "y" {
+		return true
+	}
+	return false
+}
+
 // GetBody return body of request
 func (srv *Server) GetBody() []byte {
 	return srv.Ctx.Request.Body()
@@ -168,32 +207,44 @@ func (srv *Server) GetBody() []byte {
 
 // ErrAuth sends auth error to client
 func (srv *Server) ErrAuth(code string, text interface{}) {
-	srv.SendError(401, code, text)
+	srv.ErrCode(401, code, text)
 }
 
 // ErrForbidden this resource is prohibited for access
 func (srv *Server) ErrForbidden(code string, text interface{}) {
-	srv.SendError(403, code, text)
+	srv.ErrCode(403, code, text)
 }
 
 // ErrNotFound this resource not found
 func (srv *Server) ErrNotFound(code string, text interface{}) {
-	srv.SendError(404, code, text)
+	srv.ErrCode(404, code, text)
 }
 
 // Err http api error
 func (srv *Server) Err(code string, text interface{}) {
-	srv.SendError(400, code, text)
+	srv.ErrCode(400, code, text)
 }
 
 // ErrServer meaning error doesnt depent on request and occur beacause of server error
 func (srv *Server) ErrServer(code string, text interface{}) {
-	srv.SendError(500, code, text)
+	srv.ErrCode(500, code, text)
 }
 
 // ErrMethod emmits when method not allowed
 func (srv *Server) ErrMethod(code string, text interface{}) {
-	srv.SendError(405, code, text)
+	srv.ErrCode(405, code, text)
+}
+
+// ErrCode send error with code
+func (srv *Server) ErrCode(httpCode int, code string, text interface{}) {
+	srv.SendError(httpCode, code, text)
+	if srv.http.OnError != nil {
+		srv.http.OnError(srv, code, fmt.Sprintf("%s", text))
+	}
+	if srv.OnFail != nil {
+		srv.OnFail(httpCode, code, text)
+	}
+	panic("skip")
 }
 
 // SendError http api error
@@ -213,7 +264,6 @@ func (srv *Server) SendError(httpCode int, code string, text interface{}) {
 	}
 
 	encoder.Encode(dataError)
-	panic("skip")
 }
 
 // ErrJSONP http api error as JSONP
@@ -253,12 +303,14 @@ func (srv *Server) GetFile(name string) *File {
 		srv.Err("upload_file_error", "request method should be POST")
 		return nil
 	}
-	fileHeader, err := srv.Ctx.FormFile(name)
+	fileHeadler, err := srv.Ctx.FormFile(name)
 	if err != nil {
 		srv.Err("upload_file_error", err)
 		return nil
 	}
-	return &File{Handler: fileHeader}
+	file := File{}
+	file.SetMultipart(fileHeadler)
+	return &file
 }
 
 // GetPathParam fetches required param from path
@@ -285,9 +337,34 @@ func (srv *Server) GetCookie(key string) string {
 	return string(srv.Ctx.Request.Header.Cookie(key))
 }
 
+// SetCookie will return cookie by name
+func (srv *Server) SetCookie(key string, value string) {
+	cookie := fasthttp.Cookie{}
+	cookie.SetKey(key)
+	cookie.SetValue(value)
+	cookie.SetExpire(time.Now().Add(time.Hour * 24 * 365 * 2))
+	srv.Ctx.Response.Header.SetCookie(&cookie)
+}
+
 // GetHeader will return header by name
 func (srv *Server) GetHeader(key string) string {
 	return string(srv.Ctx.Request.Header.Peek(key))
+}
+
+// SetHeader will set header
+func (srv *Server) SetHeader(key string, value string) {
+	srv.Ctx.Response.Header.Set(key, value)
+}
+
+// GetLanguage will return short form of language browser use
+func (srv *Server) GetLanguage() string {
+	language := srv.GetHeader("Accept-Language")
+	if len(language) < 2 {
+		return "en"
+	}
+	langShort, _ := SplitDoubleString(language, "-")
+
+	return strings.ToLower(langShort)
 }
 
 // GetUserAgent returns user agent header
@@ -347,20 +424,44 @@ func (srv *Server) ParseStrList() []string {
 	return input
 }
 
+// ParseBody return H object of input object
+func (srv *Server) ParseBody() H {
+	input := H{}
+	err := json.Unmarshal(srv.GetBody(), &input)
+	if err != nil {
+		srv.Err("user_object", "Body should be json")
+	}
+	return input
+}
+
+func (srv *Server) Env() *Environment {
+	return Env(srv)
+}
+
 // Serve start handling HTTP requests using fasthttp
-func Serve(portHTTP string) {
-	h := func(ctx *fasthttp.RequestCtx) {
+func (h *HTTP) Serve(portHTTP string) {
+	ctxHanler := func(ctx *fasthttp.RequestCtx) {
+		srv := Server{
+			Ctx:  ctx,
+			Path: string(ctx.Path()),
+			http: h,
+		}
 		defer func() {
 			if r := recover(); r != nil {
 				apiErrStr := fmt.Sprintf("%v", r)
 				if apiErrStr != "skip" {
-					fmt.Println("UNCATCHED PANIC", r)
-					debug.PrintStack()
+					if h.OnPanic != nil {
+						h.OnPanic(&srv, apiErrStr+"\n\n"+string(debug.Stack()))
+					} else {
+						fmt.Println("UNCATCHED PANIC", r)
+						debug.PrintStack()
+					}
+					// this error do not panic
+					srv.SendError(500, "fatal", "runtime error")
 				}
 			}
 		}()
 		start := time.Now()
-		srv := Server{Ctx: ctx, Path: string(ctx.Path())}
 		methodStr := srv.Method()
 		method, ok := Methods[methodStr]
 		if !ok {
@@ -368,12 +469,15 @@ func Serve(portHTTP string) {
 			return
 		}
 
-		cb, params, err := httpHandlers.Route(method, srv.Path)
+		cb, params, err := h.handlers.Route(method, srv.Path)
 		if cb == nil {
 			srv.Err("not_found", err)
 			return
 		}
 		srv.PathParams = params
+		if srv.http.OnRequest != nil {
+			srv.http.OnRequest(&srv)
+		}
 		cb(&srv)
 		elapsed := time.Since(start)
 		fmt.Println("page "+methodStr+" "+srv.Path+" generated in", elapsed)
@@ -382,12 +486,12 @@ func Serve(portHTTP string) {
 	log.Println("Server started, port", portHTTP)
 	addr := ":" + portHTTP
 	fasthttp.DialTimeout(addr, 24*time.Hour)
-	if err := fasthttp.ListenAndServe(addr, h); err != nil {
+	if err := fasthttp.ListenAndServe(addr, ctxHanler); err != nil {
 		log.Fatalf("Error in ListenAndServe: %s", err)
 	}
 }
 
 // Handle add callback to
-func Handle(path string, callback func(srv *Server)) {
-	httpHandlers.Handle(Methods["*"], path, callback)
+func (h *HTTP) Handle(path string, callback func(srv *Server)) {
+	h.handlers.Handle(Methods["*"], path, callback)
 }
