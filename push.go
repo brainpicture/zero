@@ -13,6 +13,8 @@ import (
 var androidServerKey = ""
 var iosProduction = apns2.Client{}
 var iosSandbox = apns2.Client{}
+var iosBundleProd = ""
+var iosBundleSandbox = ""
 
 // Push describes object for push notifications
 type Push struct {
@@ -73,6 +75,12 @@ func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
 		notification.DeviceToken = deviceToken
 		if push.Bundle != "" {
 			notification.Topic = push.Bundle
+		} else {
+			if sandbox {
+				notification.Topic = iosBundleSandbox
+			} else {
+				notification.Topic = iosBundleProd
+			}
 		}
 		sound := "default"
 		if push.NoSound {
@@ -134,13 +142,14 @@ func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
 }
 
 // PushInitIOS init push notifications for ios
-func PushInitIOS(certProduction, passProduction, certSandbox, passSandbox string) {
+func PushInitIOS(certProduction, passProduction, bundleProd, certSandbox, passSandbox, bundleSandbox string) {
 	cert, err := certificate.FromP12File(certProduction, passProduction)
 	if err != nil {
 		fmt.Println("Production Cert Error:", err)
 	} else {
 		iosProduction = *apns2.NewClient(cert).Production()
 	}
+	iosBundleProd = bundleProd
 
 	cert, err = certificate.FromP12File(certSandbox, passSandbox)
 	if err != nil {
@@ -148,6 +157,7 @@ func PushInitIOS(certProduction, passProduction, certSandbox, passSandbox string
 	} else {
 		iosSandbox = *apns2.NewClient(cert).Development()
 	}
+	iosBundleSandbox = bundleSandbox
 }
 
 // PushInitAndroid init push notifications for android
