@@ -298,7 +298,6 @@ func (srv *Server) IsPatch() bool {
 
 // GetFile fetches file from multipart
 func (srv *Server) GetFile(name string) *File {
-	fmt.Println("get file here")
 	if !srv.IsPost() {
 		srv.Err("upload_file_error", "request method should be POST")
 		return nil
@@ -462,7 +461,7 @@ func (h *HTTP) Serve(portHTTP string) {
 				}
 			}
 		}()
-		start := time.Now()
+		//start := time.Now()
 		methodStr := srv.Method()
 		method, ok := Methods[methodStr]
 		if !ok {
@@ -480,8 +479,7 @@ func (h *HTTP) Serve(portHTTP string) {
 			srv.http.OnRequest(&srv)
 		}
 		cb(&srv)
-		elapsed := time.Since(start)
-		fmt.Println("page "+methodStr+" "+srv.Path+" generated in", elapsed)
+		//elapsed := time.Since(start)
 	}
 
 	log.Println("Server started, port", portHTTP)
