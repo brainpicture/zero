@@ -95,7 +95,10 @@ func (q *Queue) ListenAll(pattern string) {
 				event.Key = msg.Channel
 				//fmt.Println(">>>>>", event)
 				for ch := range chArr {
-					ch <- *event // all the channels should be nonblocking
+					select {
+					case ch <- *event: // all the channels should be nonblocking
+					default:
+					}
 				}
 				//fmt.Println("<<<<< PUSHED")
 			}
@@ -215,7 +218,7 @@ func (qc *QueueChan) Unsubscribe(key string) {
 	if ok {
 		delete(q.channels[key], qc.Chan)
 		cnt := 0
-		for _ = range chArr {
+		for range chArr {
 			cnt++
 		}
 		if cnt == 0 {
@@ -223,13 +226,11 @@ func (qc *QueueChan) Unsubscribe(key string) {
 		}
 	}
 	delete(qc.keys, key)
-	//qc.log(key)
 }
 
 // UnsubscribeAll remove all subscribtions
 func (qc *QueueChan) UnsubscribeAll() {
 	for key := range qc.keys {
-		//fmt.Println("~~~~~ unsubscribe", key)
 		qc.Unsubscribe(key)
 	}
 }

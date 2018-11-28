@@ -409,12 +409,6 @@ func DecodeInt64(link string, symbols string) int64 {
 	return val
 }
 
-// ParseURLs will return links in text
-func ParseURLs(text string) []string {
-	matches := reURL.FindAllString(text, -1)
-	return matches
-}
-
 func init() {
 	reURL = regexp.MustCompile(`((http|ftp|https):\/\/)?([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:/~\+#]*[\w\-\@?^=%&amp;/~\+#])?`)
 }
