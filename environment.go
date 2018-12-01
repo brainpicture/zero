@@ -13,6 +13,18 @@ type langPack map[string]langString
 
 var langPacks = map[string]langPack{}
 
+const (
+	// EnvPlatformNone platform not set yet
+	EnvPlatformNone int = iota
+	// EnvPlatformIOS is iphone device or ipad
+	EnvPlatformIOS
+	// EnvPlatformAndroid means its android
+	EnvPlatformAndroid
+	// EnvPlatformBot is for bots or index bot
+	EnvPlatformBot
+)
+
+// AddLangPack will set langpack
 func AddLangPack(langKey string, langPack H) {
 	pack, ok := langPacks[langKey]
 	if !ok {
@@ -83,9 +95,11 @@ func Env(srv *Server) *Environment {
 func (e *Environment) SetPlatform(platform string) {
 	switch strings.ToLower(platform) {
 	case "ios":
-		e.Platform = 1
+		e.Platform = EnvPlatformIOS
 	case "android":
-		e.Platform = 2
+		e.Platform = EnvPlatformAndroid
+	case "bot":
+		e.Platform = EnvPlatformBot
 	}
 }
 
