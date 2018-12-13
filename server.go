@@ -215,6 +215,11 @@ func (srv *Server) ErrForbidden(code string, text interface{}) {
 	srv.ErrCode(403, code, text)
 }
 
+// ErrFlood too ofter, retry later
+func (srv *Server) ErrFlood(code string, text interface{}) {
+	srv.ErrCode(429, code, text)
+}
+
 // ErrNotFound this resource not found
 func (srv *Server) ErrNotFound(code string, text interface{}) {
 	srv.ErrCode(404, code, text)

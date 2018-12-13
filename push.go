@@ -91,11 +91,14 @@ func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
 			body = push.Sender + ": " + body
 		}
 		aps := H{
-			"sound": sound,
+			//	"sound": sound,
 			"alert": apnsAlert{
 				Title: push.Title,
 				Body:  body,
 			},
+		}
+		if sound != "" {
+			aps["sound"] = sound
 		}
 		if push.Grouping != "" {
 			aps["thread-id"] = push.Grouping
