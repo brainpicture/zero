@@ -130,7 +130,7 @@ func (srv *Server) GetParam(key string) string {
 
 // GetParamPagination parse param for pagination
 func (srv *Server) GetParamPagination(defCount int) *Pagination {
-	result := Pagination{}
+	result := Pagination{srv: srv}
 	param := srv.GetParamOpt("from")
 	count := srv.GetParamInt("count")
 	result.Reverse = srv.GetParamBool("reverse")

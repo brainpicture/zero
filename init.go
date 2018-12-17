@@ -339,7 +339,7 @@ func SortByValueInt(m map[string]int) {
 	}
 }
 
-// Trim checks string is not longet than provided length and shorted it with .. postfix
+// Trim checks string is not longer than provided length and shorted it with .. postfix
 func Trim(str string, length int) string {
 	chars := []rune(str)
 	if len(chars) > length {

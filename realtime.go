@@ -20,12 +20,12 @@ type Queue struct {
 
 // QueueEvent is an event objects stored in the queue
 type QueueEvent struct {
-	ID        int64
-	Key       string
-	Type      string
-	UserID    int64
-	SessionID int64
-	Data      []byte
+	ID        int64  `json:"id"`
+	Key       string `json:"-"`
+	Type      string `json:"event"`
+	UserID    int64  `json:"-"`
+	SessionID int64  `json:"-"`
+	Data      []byte `json:"data"`
 }
 
 // QueueChan is a struct to controll Queue channels

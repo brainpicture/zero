@@ -103,6 +103,19 @@ func (e *Environment) SetPlatform(platform string) {
 	}
 }
 
+// PlatformString return string for platform
+func (e *Environment) PlatformString() string {
+	switch e.Platform {
+	case EnvPlatformIOS:
+		return "ios"
+	case EnvPlatformAndroid:
+		return "android"
+	case EnvPlatformBot:
+		return "bot"
+	}
+	return "unknown"
+}
+
 // Ver checks enviroment version
 func (e *Environment) Ver(a int) bool {
 	return e.Version >= a
