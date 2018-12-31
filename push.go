@@ -29,6 +29,7 @@ type Push struct {
 	ContentAvailable bool // ios flag to trigger code execution
 	Mutable          bool
 	Category         string
+	Collapse         string
 	// Sender is prefix which whould be placed before Text field, like Sender: Text on ios, and as separate field on android
 	Sender string
 }
@@ -115,6 +116,9 @@ func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
 		if push.Category != "" {
 			aps["category"] = push.Category
 		}
+		if push.Collapse != "" {
+			notification.CollapseID = push.Collapse
+		}
 		apsMsg := H{
 			"aps": aps,
 			"data": H{
@@ -131,6 +135,7 @@ func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
 		} else {
 			client = iosProduction
 		}
+
 		resp, err := client.Push(notification)
 		if err != nil {
 			return err

@@ -13,7 +13,8 @@ type Pagination struct {
 	ObjectID     int64
 	Count        int
 	Skip         int
-	NewOffset    int64 // used to override offset and count
+	NextOffset   int64 // used to override offset and count
+	PrevOffset   int64 // used to automaticly set PrevFrom using int
 	AllCount     int
 	NextObjectID int64
 	Reverse      bool
@@ -23,14 +24,22 @@ type Pagination struct {
 type PaginationWrap struct {
 	Items    interface{} `json:"items"`
 	NextFrom string      `json:"next_from,omitempty"`
+	PrevFrom string      `json:"prev_from,omitempty"`
 }
 
 // Wrap will return object of PaginationWrap
 func (p *Pagination) Wrap(items interface{}) *PaginationWrap {
-	return &PaginationWrap{
-		Items:    items,
-		NextFrom: p.GetNextFrom(),
+	pagWrap := PaginationWrap{
+		Items: items,
 	}
+	if p.Reverse {
+		pagWrap.PrevFrom = p.GetNextFrom()
+		pagWrap.NextFrom = p.GetPrevFrom()
+	} else {
+		pagWrap.NextFrom = p.GetNextFrom()
+		pagWrap.PrevFrom = p.GetPrevFrom()
+	}
+	return &pagWrap
 }
 
 // CountMax will send error if count bigger than limit
@@ -79,18 +88,26 @@ func (p *Pagination) GetNextFrom() string {
 	if p.nextFrom != "" {
 		return p.nextFrom
 	}
-	if p.NewOffset != 0 { // new offset is used
-		if p.NewOffset == -1 {
+	if p.NextOffset != 0 { // new offset is used
+		if p.NextOffset == -1 {
 			return ""
 		}
 		if p.NextObjectID != 0 {
-			return J(p.NewOffset, ":", p.NextObjectID)
+			return J(p.NextOffset, ":", p.NextObjectID)
 		} else {
-			return J(p.NewOffset)
+			return J(p.NextOffset)
 		}
 	}
 	if p.AllCount > 0 && p.offset+int64(p.Count+p.Skip) < int64(p.AllCount) {
 		return J(p.offset+int64(p.Count+p.Skip), ":", p.NextObjectID)
+	}
+	return ""
+}
+
+// GetPrevFrom will return ultimately prev_from build using PrevOffset value
+func (p *Pagination) GetPrevFrom() string {
+	if p.PrevOffset != 0 { // new offset is used
+		return J(p.PrevOffset)
 	}
 	return ""
 }
@@ -142,8 +159,8 @@ func (p *Pagination) GetCursor() uint64 {
 // SetCursor sets cursor value from redis
 func (p *Pagination) SetCursor(cursor uint64) {
 	if cursor == 0 {
-		p.NewOffset = -1 // nothing more
+		p.NextOffset = -1 // nothing more
 	} else {
-		p.NewOffset = int64(cursor)
+		p.NextOffset = int64(cursor)
 	}
 }

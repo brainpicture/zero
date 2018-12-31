@@ -393,6 +393,7 @@ func (srv *Server) EventSource(callback func(*ServerEvents)) {
 	srv.Ctx.Response.Header.Set("Cache-Control", "no-cache")
 	srv.Ctx.Response.Header.Set("Connection", "keep-alive")
 	srv.Ctx.Response.Header.Set("Transfer-Encoding", "chunked")
+
 	lastEventIDStr := srv.GetHeader("Last-Event-ID")
 	sessionID := srv.GetSessionID()
 
