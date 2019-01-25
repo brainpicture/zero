@@ -22,6 +22,8 @@ const (
 	EnvPlatformAndroid
 	// EnvPlatformBot is for bots or index bot
 	EnvPlatformBot
+	// EnvPlatformTest means test sute
+	EnvPlatformTest
 )
 
 // AddLangPack will set langpack
@@ -167,6 +169,9 @@ func (e *Environment) LangToInt() int {
 
 // IP will return server IP
 func (e *Environment) IP() net.IP {
+	if e.srv == nil {
+		return net.ParseIP("127.0.0.1")
+	}
 	ipStr := e.srv.GetHeader("X-Real-IP")
 	return net.ParseIP(ipStr)
 }

@@ -317,6 +317,20 @@ func (srv *Server) GetFile(name string) *File {
 	return &file
 }
 
+// TryFile fetches file from multipart only if presented
+func (srv *Server) TryFile(name string) *File {
+	if !srv.IsPost() {
+		return nil
+	}
+	fileHeadler, err := srv.Ctx.FormFile(name)
+	if err != nil {
+		return nil
+	}
+	file := File{}
+	file.SetMultipart(fileHeadler)
+	return &file
+}
+
 // GetPathParam fetches required param from path
 func (srv *Server) GetPathParam(key string) string {
 	param, ok := srv.PathParams[key]
@@ -384,6 +398,9 @@ func (srv *Server) Method() string {
 // GetSessionID return Session-ID hearder int64
 func (srv *Server) GetSessionID() int64 {
 	sessionIDStr := srv.GetHeader("Session-ID")
+	if sessionIDStr == "" {
+		sessionIDStr = srv.GetParamOpt("session-id")
+	}
 	return I64(sessionIDStr)
 }
 
