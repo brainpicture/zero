@@ -56,7 +56,10 @@ func (srv *Server) UpgradeWS(cb func(req *Request)) *Socket {
 						return
 					}
 				}
-				soc.Read <- message
+				select {
+				case soc.Read <- message:
+				default:
+				}
 			}
 		}()
 	})

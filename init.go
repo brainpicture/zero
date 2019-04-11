@@ -2,10 +2,12 @@ package zero
 
 import (
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
 	"sort"
@@ -17,6 +19,12 @@ import (
 
 // H allow to describe custom json easily
 type H map[string]interface{}
+
+// S allow to describe string hashmaps easily
+type S map[string]string
+
+// V allow to pass list of elements of any type
+type V []interface{}
 
 var reURL *regexp.Regexp
 
@@ -275,6 +283,43 @@ func Log(objs ...interface{}) {
 	fmt.Printf(format+"\n", objs...)
 }
 
+// Ok prints any objects
+func Ok(objs ...interface{}) {
+	os.Stdout.WriteString("\x1b[92m")
+	for i := 0; i < len(objs); i++ {
+		out := fmt.Sprintf("%+v", objs[i])
+		if i != 0 {
+			out = " " + out
+		}
+		os.Stdout.WriteString(out)
+	}
+	os.Stdout.WriteString("\x1b[0m\n")
+}
+
+// Err prints any objects
+func Err(objs ...interface{}) {
+	os.Stdout.WriteString("\x1b[91m")
+	for i := 0; i < len(objs); i++ {
+		out := fmt.Sprintf("%+v", objs[i])
+		if i != 0 {
+			out = " " + out
+		}
+		os.Stdout.WriteString(out)
+	}
+	os.Stdout.WriteString("\x1b[0m\n")
+}
+
+// LogJSON will show the json representation of logged content
+func LogJSON(objs ...interface{}) {
+	jsons := []string{}
+	for i := 0; i < len(objs); i++ {
+		json, _ := json.Marshal(objs[i])
+		jsons = append(jsons, string(json))
+	}
+
+	fmt.Println(strings.Join(jsons, " "))
+}
+
 // ParsePath returns path out of an url
 func ParsePath(path string) string {
 	path = strings.Replace(path, "//", "/", -1)
@@ -407,6 +452,30 @@ func DecodeInt64(link string, symbols string) int64 {
 		pow *= l
 	}
 	return val
+}
+
+// RandomHex will generate random hex string
+func RandomHex(n int) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+// Parallel do several tasks and return result, no more than 100 params supported
+func Parallel(tasks ...func() H) (result []H) {
+	num := len(tasks)
+	resultChan := make(chan H, num) // no more than 100 params supported
+	for _, task := range tasks {
+		go func(t func() H) {
+			resultChan <- t()
+		}(task)
+	}
+	for i := 0; i < num; i++ {
+		result = append(result, <-resultChan)
+	}
+	return
 }
 
 func init() {

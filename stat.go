@@ -21,8 +21,9 @@ type Stat struct {
 // Init allow to set stats update time
 func (s *Stat) Init(duration time.Duration, cb func(string, StatCounter)) {
 	s.counter = map[string]StatCounter{}
-	s.counterChan = make(chan StatCounter)
+	s.counterChan = make(chan StatCounter, 100)
 	go func() {
+		ticker := time.NewTicker(duration)
 		for {
 			select {
 			case e := <-s.counterChan:
@@ -38,7 +39,7 @@ func (s *Stat) Init(duration time.Duration, cb func(string, StatCounter)) {
 					}
 				}
 				s.counter[e.Name] = counter
-			case <-time.After(duration):
+			case <-ticker.C:
 				for k, v := range s.counter {
 					cb(k, v)
 				}
@@ -51,18 +52,24 @@ func (s *Stat) Init(duration time.Duration, cb func(string, StatCounter)) {
 
 // Inc increment
 func (s *Stat) Inc(name string) {
-	s.counterChan <- StatCounter{
+	select {
+	case s.counterChan <- StatCounter{
 		Name:  name,
 		Count: 1,
+	}:
+	default:
 	}
 }
 
 // Time increment
 func (s *Stat) Time(name string, time int64) {
-	s.counterChan <- StatCounter{
+	select {
+	case s.counterChan <- StatCounter{
 		Name:    name,
 		Count:   1,
 		Elapsed: time,
+	}:
+	default:
 	}
 }
 

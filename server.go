@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"runtime/debug"
 	"strconv"
@@ -51,6 +52,12 @@ func (srv *Server) Resp(data interface{}) {
 	if srv.OnResponse != nil {
 		srv.OnResponse(data)
 	}
+}
+
+// StreamBody will stream data to the client
+func (srv *Server) StreamBody(reader io.Reader, contentLength int64, contentType string) {
+	srv.Ctx.SetContentType(contentType + "; charset=utf8")
+	srv.Ctx.SetBodyStream(reader, int(contentLength))
 }
 
 // RespJSONP writes any data as JSONP to HTTP stream
@@ -177,6 +184,20 @@ func (srv *Server) GetParamInt64(key string) int64 {
 		i = 0
 	}
 	return i
+}
+
+// GetParamOptInt64 request param converted to int64
+func (srv *Server) GetParamOptInt64(key string) (int64, bool) {
+	args := srv.Ctx.QueryArgs()
+	param := args.Peek(key)
+	if len(param) == 0 {
+		return 0, false
+	}
+	i, err := strconv.ParseInt(string(param), 10, 64)
+	if err != nil {
+		i = 0
+	}
+	return i, true
 }
 
 // GetParamFloat request param converted to float64
@@ -335,7 +356,8 @@ func (srv *Server) TryFile(name string) *File {
 func (srv *Server) GetPathParam(key string) string {
 	param, ok := srv.PathParams[key]
 	if !ok || param == "" {
-		srv.Err("param", "param "+key+" should be presented in PATH")
+
+		srv.Err("param", "param "+key+" should be presented in PATH: "+srv.Path)
 	}
 	return param
 }

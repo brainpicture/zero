@@ -120,6 +120,9 @@ func (e *Environment) PlatformString() string {
 
 // Ver checks enviroment version
 func (e *Environment) Ver(a int) bool {
+	if e.Version == 0 {
+		return true
+	}
 	return e.Version >= a
 }
 
@@ -143,18 +146,7 @@ func (e *Environment) Plural(num int64, single, multiple string) string {
 
 // Lang return langpacked string
 func (e *Environment) Lang(name string) string {
-	langPack, ok := langPacks[e.Language]
-	if !ok {
-		langPack, ok = langPacks["en"]
-		if !ok {
-			return "undefined"
-		}
-	}
-	langObj, ok := langPack[name]
-	if !ok {
-		return name
-	}
-	return langObj.str
+	return LangGet(e.Language, name)
 }
 
 // LangToInt will convert language to int
@@ -174,4 +166,29 @@ func (e *Environment) IP() net.IP {
 	}
 	ipStr := e.srv.GetHeader("X-Real-IP")
 	return net.ParseIP(ipStr)
+}
+
+// LangGet will return langpack for specified language key
+func LangGet(language, name string) string {
+	langPack, ok := langPacks[language]
+	if !ok {
+		langPack, ok = langPacks["en"]
+		if !ok {
+			return "undefined"
+		}
+	}
+	langObj, ok := langPack[name]
+	if !ok {
+		return name
+	}
+	return langObj.str
+}
+
+// LangFormat will format lang string with data variables
+func LangFormat(language, name string, data S) string {
+	langStr := LangGet(language, name)
+	for k, v := range data {
+		langStr = strings.Replace(langStr, "$"+k, v, -1)
+	}
+	return langStr
 }

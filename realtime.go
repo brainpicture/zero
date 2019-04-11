@@ -63,7 +63,6 @@ func QueueDataParse(dataRaw string) *QueueEvent {
 // ListenAll will start listen process
 func (q *Queue) ListenAll(pattern string) {
 	pubsub := q.redis.PSubscribe("q." + pattern)
-	fmt.Println("[REDIS] listen", "q."+pattern)
 	_, err := pubsub.Receive()
 	if err != nil {
 		panic(err)
@@ -76,7 +75,7 @@ func (q *Queue) ListenAll(pattern string) {
 			//fmt.Println("ev is here")
 
 			if !ok {
-				fmt.Println("[REDIS], msg ont ok")
+				Err("[REDIS], msg not ok")
 				break
 			}
 			//fmt.Println("event from redis", msg.Channel, msg)
@@ -175,7 +174,7 @@ func (q *Queue) GetHistory(key string, lastEventID int64) ([]*QueueEvent, bool, 
 
 // Chan will return QueueChan object to controll channel
 func (q *Queue) Chan() QueueChan {
-	ch := make(chan QueueEvent)
+	ch := make(chan QueueEvent, 1000)
 	return QueueChan{
 		q:    q,
 		Chan: ch,

@@ -54,10 +54,27 @@ func (p *Pagination) WrapCustom(items interface{}, extra H) H {
 	resp := H{
 		"items": items,
 	}
-	nextFrom := p.GetNextFrom()
-	if nextFrom != "" {
-		resp["next_from"] = nextFrom
+
+	if p.Reverse {
+		prevFrom := p.GetNextFrom()
+		if prevFrom != "" {
+			resp["prev_from"] = prevFrom
+		}
+		nextFrom := p.GetPrevFrom()
+		if nextFrom != "" {
+			resp["next_from"] = nextFrom
+		}
+	} else {
+		nextFrom := p.GetNextFrom()
+		if nextFrom != "" {
+			resp["next_from"] = nextFrom
+		}
+		prevFrom := p.GetPrevFrom()
+		if prevFrom != "" {
+			resp["prev_from"] = prevFrom
+		}
 	}
+
 	for k, v := range extra {
 		resp[k] = v
 	}
