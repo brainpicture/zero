@@ -42,6 +42,11 @@ func (r *RestAPI) UPDATE(path string, callback func(srv *Server)) {
 	r.http.handlers.PushHandler(Methods["UPDATE"], r.joinPath(path), callback, []string{})
 }
 
+// SetCORS setup cors header for the api
+func (r *RestAPI) SetCORS(allow string) {
+	r.http.CORS = allow
+}
+
 // Rest init function for rest object
 func (h *HTTP) Rest(path string) *RestAPI {
 	api := RestAPI{

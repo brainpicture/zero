@@ -25,6 +25,7 @@ type HTTP struct {
 	OnError   func(srv *Server, name, text string)
 	OnPanic   func(srv *Server, stackTrace string)
 	OnRequest func(srv *Server)
+	CORS      string
 }
 
 // Server is an wrapper around fasthttp
@@ -41,6 +42,9 @@ type Server struct {
 // Resp writes any data as JSON to HTTP stream
 func (srv *Server) Resp(data interface{}) {
 	srv.Ctx.SetContentType("application/json; charset=utf8")
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
 
 	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
 	encoder.SetEscapeHTML(false)
@@ -57,11 +61,17 @@ func (srv *Server) Resp(data interface{}) {
 // StreamBody will stream data to the client
 func (srv *Server) StreamBody(reader io.Reader, contentLength int64, contentType string) {
 	srv.Ctx.SetContentType(contentType + "; charset=utf8")
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
 	srv.Ctx.SetBodyStream(reader, int(contentLength))
 }
 
 // RespJSONP writes any data as JSONP to HTTP stream
 func (srv *Server) RespJSONP(data interface{}) {
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
 	cbName := srv.GetParam("jsoncallback")
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -83,24 +93,36 @@ func (srv *Server) RespOk() {
 
 // HTML responds with HTML
 func (srv *Server) HTML(data []byte) {
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
 	srv.Ctx.Write(data)
 	srv.Ctx.SetContentType("text/html; charset=utf8")
 }
 
 // JS responds with JS
 func (srv *Server) JS(data []byte) {
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
 	srv.Ctx.Write(data)
 	srv.Ctx.SetContentType("application/javascript; charset=utf8")
 }
 
 // FileBlob responds with FileBlob
 func (srv *Server) FileBlob(data []byte, contentType string) {
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
 	srv.Ctx.Write(data)
 	srv.Ctx.SetContentType(contentType)
 }
 
 // File responds with File
 func (srv *Server) File(path string) {
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
 	srv.Ctx.SendFile(path)
 }
 
@@ -277,6 +299,9 @@ func (srv *Server) ErrCode(httpCode int, code string, text interface{}) {
 func (srv *Server) SendError(httpCode int, code string, text interface{}) {
 	srv.Ctx.SetStatusCode(httpCode)
 	srv.Ctx.SetContentType("application/json; charset=utf8")
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
 
 	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
 	encoder.SetEscapeHTML(false)
@@ -508,6 +533,13 @@ func (h *HTTP) Serve(portHTTP string) {
 		}()
 		//start := time.Now()
 		methodStr := srv.Method()
+		if methodStr == "OPTIONS" {
+			if srv.http.CORS == "*" {
+				srv.SetHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PATCH, UPDATE")
+				srv.RespOk()
+				return
+			}
+		}
 		method, ok := Methods[methodStr]
 		if !ok {
 			srv.Err("invalid_request", "Unsupported method")
@@ -538,4 +570,9 @@ func (h *HTTP) Serve(portHTTP string) {
 // Handle add callback to
 func (h *HTTP) Handle(path string, callback func(srv *Server)) {
 	h.handlers.Handle(Methods["*"], path, callback)
+}
+
+// SetCORS setup cors header for the api
+func (h *HTTP) SetCORS(allow string) {
+	h.CORS = allow
 }
