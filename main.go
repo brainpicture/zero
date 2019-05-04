@@ -26,6 +26,12 @@ type S map[string]string
 // V allow to pass list of elements of any type
 type V []interface{}
 
+// KV represents an key value array
+type KV struct {
+	Key   string
+	Value string
+}
+
 var reURL *regexp.Regexp
 
 // String return field as string
