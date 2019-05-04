@@ -429,6 +429,19 @@ type Plot2D struct {
 	Points []int64  `json:"points"`
 }
 
+// AlphabetEncodingSymbols is list of symbols you can use to encode different strings
+const AlphabetEncodingSymbols = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+// I64Str converts int to short string with numbers and letters
+func I64Str(val int64) string {
+	return EncodeInt64(val, AlphabetEncodingSymbols)
+}
+
+// StrI64 converts int to short string with numbers and letters
+func StrI64(val string) int64 {
+	return DecodeInt64(val, AlphabetEncodingSymbols)
+}
+
 // EncodeInt64 encodes int using passed symbols
 func EncodeInt64(val int64, symbols string) string {
 	l := int64(len(symbols))
