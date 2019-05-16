@@ -149,6 +149,11 @@ func (e *Environment) Lang(name string) string {
 	return LangGet(e.Language, name)
 }
 
+// LangFormat formats langpack key with variables
+func (e *Environment) LangFormat(name string, data S) string {
+	return LangFormat(e.Language, name, data)
+}
+
 // LangToInt will convert language to int
 func (e *Environment) LangToInt() int {
 	switch e.Language {
