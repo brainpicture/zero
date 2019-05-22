@@ -327,6 +327,11 @@ func (srv *Server) ErrJSONP(text interface{}) {
 	panic("skip")
 }
 
+// Redirect will return server-side redirect
+func (srv *Server) Redirect(uri string, statusCode int) {
+	srv.Ctx.Redirect(uri, statusCode)
+}
+
 // IsPost true if method is Post
 func (srv *Server) IsPost() bool {
 	return srv.Ctx.IsPost()
