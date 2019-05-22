@@ -464,6 +464,9 @@ func (srv *Server) EventSource(callback func(*ServerEvents)) {
 	srv.Ctx.Response.Header.Set("Transfer-Encoding", "chunked")
 
 	lastEventIDStr := srv.GetHeader("Last-Event-ID")
+	if lastEventIDStr == "" {
+		lastEventIDStr = srv.GetParamOpt("last-event-id")
+	}
 	sessionID := srv.GetSessionID()
 
 	srv.Ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
