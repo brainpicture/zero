@@ -515,6 +515,16 @@ func (srv *Server) Event(data interface{}) {
 	}
 }
 
+// ParseInt64List parses []int64 from json body
+func (srv *Server) ParseInt64List() []int64 {
+	input := []int64{}
+	err := json.Unmarshal(srv.GetBody(), &input)
+	if err != nil {
+		srv.Err("user_invalid", "Body should be json list of strings")
+	}
+	return input
+}
+
 // ParseStrList parses []string from json body
 func (srv *Server) ParseStrList() []string {
 	input := []string{}
