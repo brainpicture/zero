@@ -284,7 +284,7 @@ func (srv *Server) ErrMethod(code string, text interface{}) {
 }
 
 // ErrCustom will send error with custom fields
-func (srv *Server) ErrCustom(errCode int, code, desc string, data S) {
+func (srv *Server) ErrCustom(errCode int, code, desc string, data M) {
 	srv.Ctx.SetStatusCode(errCode)
 	srv.Ctx.SetContentType("application/json; charset=utf8")
 	if srv.http.CORS != "" {
