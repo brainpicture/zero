@@ -283,6 +283,30 @@ func (srv *Server) ErrMethod(code string, text interface{}) {
 	srv.ErrCode(405, code, text)
 }
 
+// ErrCustom will send error with custom fields
+func (srv *Server) ErrCustom(errCode int, code, desc string, data S) {
+	srv.Ctx.SetStatusCode(errCode)
+	srv.Ctx.SetContentType("application/json; charset=utf8")
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
+
+	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
+	encoder.SetEscapeHTML(false)
+
+	data["code"] = code
+	data["desc"] = desc
+	encoder.Encode(data)
+
+	if srv.http.OnError != nil {
+		srv.http.OnError(srv, code, desc)
+	}
+	if srv.OnFail != nil {
+		srv.OnFail(errCode, code, desc)
+	}
+	panic("skip")
+}
+
 // ErrCode send error with code
 func (srv *Server) ErrCode(httpCode int, code string, text interface{}) {
 	srv.SendError(httpCode, code, text)
