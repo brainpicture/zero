@@ -55,6 +55,7 @@ type Environment struct {
 	Platform   int
 	AppVersion int
 	Build      int
+	Extra      string
 }
 
 // Environment format in useragent
@@ -88,6 +89,9 @@ func Env(srv *Server) *Environment {
 	if langStr == "" {
 		langStr = "en"
 	}
+	if len(parts) > 3 {
+		env.Extra = parts[3]
+	}
 
 	env.Language = langStr
 	return &env
@@ -103,6 +107,11 @@ func (e *Environment) SetPlatform(platform string) {
 	case "bot":
 		e.Platform = EnvPlatformBot
 	}
+}
+
+// IsBot return true if platform is bot
+func (e *Environment) IsBot() bool {
+	return e.Platform == EnvPlatformBot
 }
 
 // PlatformString return string for platform

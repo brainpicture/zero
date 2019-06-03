@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -478,6 +479,11 @@ func (srv *Server) GetSessionID() int64 {
 		sessionIDStr = srv.GetParamOpt("session-id")
 	}
 	return I64(sessionIDStr)
+}
+
+// GetIP will return remove ip of request
+func (srv *Server) GetIP() net.IP {
+	return srv.Ctx.RemoteIP()
 }
 
 // EventSource starts an event server
