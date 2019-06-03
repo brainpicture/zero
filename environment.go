@@ -24,6 +24,8 @@ const (
 	EnvPlatformBot
 	// EnvPlatformTest means test sute
 	EnvPlatformTest
+	// EnvPlatformWeb is for html version
+	EnvPlatformWeb
 )
 
 // AddLangPack will set langpack
@@ -106,6 +108,8 @@ func (e *Environment) SetPlatform(platform string) {
 		e.Platform = EnvPlatformAndroid
 	case "bot":
 		e.Platform = EnvPlatformBot
+	case "web":
+		e.Platform = EnvPlatformWeb
 	}
 }
 
