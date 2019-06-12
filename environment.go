@@ -53,6 +53,7 @@ func AddLangPack(langKey string, langPack H) {
 type Environment struct {
 	srv        *Server
 	Language   string
+	Country    string
 	Version    int
 	Platform   int
 	AppVersion int
@@ -90,12 +91,18 @@ func Env(srv *Server) *Environment {
 	langStr := parts[2]
 	if langStr == "" {
 		langStr = "en"
+	} else {
+		langParts := strings.Split(langStr, "-")
+		if len(langParts) > 1 {
+			langStr = langParts[0]
+			env.Country = strings.ToLower(langParts[1])
+		}
 	}
 	if len(parts) > 3 {
 		env.Extra = parts[3]
 	}
 
-	env.Language = langStr
+	env.Language = strings.ToLower(langStr)
 	return &env
 }
 
@@ -168,7 +175,7 @@ func (e *Environment) LangFormat(name string, data S) string {
 }
 
 // LangToInt will convert language to int
-func (e *Environment) LangToInt() int {
+func (e *Environment) LangToInt() uint8 {
 	switch e.Language {
 	case "ru":
 		return 1
