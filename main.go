@@ -124,8 +124,8 @@ func Now() int64 {
 	return time.Now().Unix()
 }
 
-// Now64 returns full time
-func Now64() int64 {
+// NowNano returns unixnano time
+func NowNano() int64 {
 	return time.Now().UnixNano()
 }
 
