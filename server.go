@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/reuseport"
 )
 
 //var httpHandlers = map[string]func(srv *Server){}
@@ -607,11 +608,21 @@ func (h *HTTP) Serve(portHTTP string) {
 		//elapsed := time.Since(start)
 	}
 
+	//fasthttp.DialTimeout(addr, 24*time.Hour)
 	log.Println("Server started, port", portHTTP)
-	addr := ":" + portHTTP
-	fasthttp.DialTimeout(addr, 24*time.Hour)
-	if err := fasthttp.ListenAndServe(addr, ctxHanler); err != nil {
-		log.Fatalf("Error in ListenAndServe: %s", err)
+
+	// NOTE: Package reuseport provides a TCP net.Listener with SO_REUSEPORT support.
+	// SO_REUSEPORT allows linear scaling server performance on multi-CPU servers.
+	ln, err := reuseport.Listen("tcp4", "localhost:"+portHTTP)
+	if err == nil {
+		err = fasthttp.Serve(ln, ctxHanler)
+	} else {
+		log.Fatalf("error in reuseport listener: %s, fallback default", err)
+
+		err = fasthttp.ListenAndServe(":"+portHTTP, ctxHanler)
+	}
+	if err != nil {
+		log.Fatalf("Error in start server: %s", err)
 	}
 }
 
