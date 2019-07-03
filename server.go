@@ -28,6 +28,7 @@ type HTTP struct {
 	OnPanic   func(srv *Server, stackTrace string)
 	OnRequest func(srv *Server)
 	CORS      string
+	server    *fasthttp.Server
 }
 
 // Server is an wrapper around fasthttp
@@ -557,6 +558,11 @@ func (srv *Server) Env() *Environment {
 	return Env(srv)
 }
 
+// Shutdown will gracefully shutdown the app, stopping receiving new connections but continue receive old one
+func (h *HTTP) Shutdown() error {
+	return h.server.Shutdown()
+}
+
 // Serve start handling HTTP requests using fasthttp
 func (h *HTTP) Serve(portHTTP string) {
 	ctxHanler := func(ctx *fasthttp.RequestCtx) {
@@ -614,12 +620,16 @@ func (h *HTTP) Serve(portHTTP string) {
 	// NOTE: Package reuseport provides a TCP net.Listener with SO_REUSEPORT support.
 	// SO_REUSEPORT allows linear scaling server performance on multi-CPU servers.
 	ln, err := reuseport.Listen("tcp4", "localhost:"+portHTTP)
+	server := fasthttp.Server{
+		Handler: ctxHanler,
+	}
+	h.server = &fasthttp.Server
 	if err == nil {
-		err = fasthttp.Serve(ln, ctxHanler)
+		err = server.Serve(ln)
 	} else {
 		log.Fatalf("error in reuseport listener: %s, fallback default", err)
 
-		err = fasthttp.ListenAndServe(":"+portHTTP, ctxHanler)
+		err = server.ListenAndServe(":" + portHTTP)
 	}
 	if err != nil {
 		log.Fatalf("Error in start server: %s", err)
