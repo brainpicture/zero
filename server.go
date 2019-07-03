@@ -620,16 +620,15 @@ func (h *HTTP) Serve(portHTTP string) {
 	// NOTE: Package reuseport provides a TCP net.Listener with SO_REUSEPORT support.
 	// SO_REUSEPORT allows linear scaling server performance on multi-CPU servers.
 	ln, err := reuseport.Listen("tcp4", "localhost:"+portHTTP)
-	server := fasthttp.Server{
+	h.server = &fasthttp.Server{
 		Handler: ctxHanler,
 	}
-	h.server = &fasthttp.Server
 	if err == nil {
-		err = server.Serve(ln)
+		err = h.server.Serve(ln)
 	} else {
 		log.Fatalf("error in reuseport listener: %s, fallback default", err)
 
-		err = server.ListenAndServe(":" + portHTTP)
+		err = h.server.ListenAndServe(":" + portHTTP)
 	}
 	if err != nil {
 		log.Fatalf("Error in start server: %s", err)
