@@ -107,7 +107,7 @@ func (q *Queue) ListenAll(pattern string) {
 
 // EventID will return new event ID for push method
 func (q *Queue) EventID() int64 {
-	return Now64()
+	return NowNano()
 }
 
 // Push event to local subscribers
