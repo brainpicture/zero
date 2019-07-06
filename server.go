@@ -573,7 +573,7 @@ func (h *HTTP) Shutdown() error {
 func (h *HTTP) IsStarted() bool {
 	h.mux.Lock()
 	isStarted := h.started
-	h.mux.UnLock()
+	h.mux.Unlock()
 	return isStarted
 }
 
@@ -649,7 +649,7 @@ func (h *HTTP) Serve(portHTTP string) {
 	} else {
 		h.mux.Lock()
 		h.started = true
-		h.mux.UnLock()
+		h.mux.Unlock()
 	}
 }
 
