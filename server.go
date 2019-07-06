@@ -11,6 +11,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/valyala/fasthttp"
@@ -29,6 +30,8 @@ type HTTP struct {
 	OnRequest func(srv *Server)
 	CORS      string
 	server    *fasthttp.Server
+	started   bool // true if server is started
+	mux       sync.Mutex
 }
 
 // Server is an wrapper around fasthttp
@@ -560,7 +563,18 @@ func (srv *Server) Env() *Environment {
 
 // Shutdown will gracefully shutdown the app, stopping receiving new connections but continue receive old one
 func (h *HTTP) Shutdown() error {
+	if !h.IsStarted() {
+		return nil
+	}
 	return h.server.Shutdown()
+}
+
+// IsStarted return true if server started
+func (h *HTTP) IsStarted() bool {
+	h.mux.Lock()
+	isStarted := h.started
+	h.mux.UnLock()
+	return isStarted
 }
 
 // Serve start handling HTTP requests using fasthttp
@@ -632,6 +646,10 @@ func (h *HTTP) Serve(portHTTP string) {
 	}
 	if err != nil {
 		log.Fatalf("Error in start server: %s", err)
+	} else {
+		h.mux.Lock()
+		h.started = true
+		h.mux.UnLock()
 	}
 }
 
