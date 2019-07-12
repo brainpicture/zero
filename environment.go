@@ -75,7 +75,8 @@ func Env(srv *Server) *Environment {
 	}
 
 	env.Language = strings.ToLower(langStr)
-	env.LangPack = &Lang(env.Language)
+	langPack := Lang(env.Language)
+	env.LangPack = &langPack
 	return &env
 }
 

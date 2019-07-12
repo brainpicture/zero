@@ -58,13 +58,13 @@ func (lo *LangObj) Format(data S) string {
 func AddLangPack(langKey string, langPack H) {
 	pack, ok := langPacks[langKey]
 	if !ok {
-		pack = map[string]langString{}
+		pack = map[string]LangObj{}
 		langPacks[langKey] = pack
 		//panic("lang " + langKey + " not supported")
 	}
 
 	for key, lang := range langPack {
-		langObj := langString{}
+		langObj := LangObj{}
 		switch langType := lang.(type) {
 		case string:
 			langObj.str = langType
