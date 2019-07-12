@@ -39,14 +39,14 @@ func (lp LangPack) Get(name string) LangObj {
 }
 
 // Plural select form of words passed based on number
-func (lo *LangObj) Plural(num int64) {
+func (lo LangObj) Plural(num int64) LangObj {
 	if num > 1 || num < -1 {
 		lo.str = lo.form2
 	}
 }
 
 // Format will format data of Lang Obj
-func (lo *LangObj) Format(data S) string {
+func (lo LangObj) Format(data S) string {
 	str := lo.str
 	for k, v := range data {
 		str = strings.Replace(str, "$"+k, v, -1)
