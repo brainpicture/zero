@@ -43,6 +43,7 @@ func (lo LangObj) Plural(num int64) LangObj {
 	if num > 1 || num < -1 {
 		lo.str = lo.form2
 	}
+	return lo
 }
 
 // Format will format data of Lang Obj
