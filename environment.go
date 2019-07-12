@@ -5,14 +5,6 @@ import (
 	"strings"
 )
 
-type langString struct {
-	str string
-}
-
-type langPack map[string]langString
-
-var langPacks = map[string]langPack{}
-
 const (
 	// EnvPlatformNone platform not set yet
 	EnvPlatformNone int = iota
@@ -28,27 +20,6 @@ const (
 	EnvPlatformWeb
 )
 
-// AddLangPack will set langpack
-func AddLangPack(langKey string, langPack H) {
-	pack, ok := langPacks[langKey]
-	if !ok {
-		pack = map[string]langString{}
-		langPacks[langKey] = pack
-		//panic("lang " + langKey + " not supported")
-	}
-
-	for key, lang := range langPack {
-		langStr, ok := lang.(string)
-		if !ok {
-			panic("lang " + langKey + " key " + key + " has unsupported type, try string")
-		}
-		langObj := langString{
-			str: langStr,
-		}
-		pack[key] = langObj
-	}
-}
-
 // Environment defines user params like language and platform
 type Environment struct {
 	srv        *Server
@@ -59,6 +30,7 @@ type Environment struct {
 	AppVersion int
 	Build      int
 	Extra      string
+	LangPack   *LangPack
 }
 
 // Environment format in useragent
@@ -103,6 +75,7 @@ func Env(srv *Server) *Environment {
 	}
 
 	env.Language = strings.ToLower(langStr)
+	env.LangPack = Lang(env.Language)
 	return &env
 }
 
@@ -165,13 +138,11 @@ func (e *Environment) Plural(num int64, single, multiple string) string {
 }
 
 // Lang return langpacked string
-func (e *Environment) Lang(name string) string {
-	return LangGet(e.Language, name)
-}
-
-// LangFormat formats langpack key with variables
-func (e *Environment) LangFormat(name string, data S) string {
-	return LangFormat(e.Language, name, data)
+func (e *Environment) Lang(name string) LangObj {
+	if e.LangPack == nil {
+		return LangUndefined
+	}
+	return e.LangPack.Get(name)
 }
 
 // LangToInt will convert language to int
@@ -191,29 +162,4 @@ func (e *Environment) IP() net.IP {
 	}
 	ipStr := e.srv.GetHeader("X-Real-IP")
 	return net.ParseIP(ipStr)
-}
-
-// LangGet will return langpack for specified language key
-func LangGet(language, name string) string {
-	langPack, ok := langPacks[language]
-	if !ok {
-		langPack, ok = langPacks["en"]
-		if !ok {
-			return "undefined"
-		}
-	}
-	langObj, ok := langPack[name]
-	if !ok {
-		return name
-	}
-	return langObj.str
-}
-
-// LangFormat will format lang string with data variables
-func LangFormat(language, name string, data S) string {
-	langStr := LangGet(language, name)
-	for k, v := range data {
-		langStr = strings.Replace(langStr, "$"+k, v, -1)
-	}
-	return langStr
 }
