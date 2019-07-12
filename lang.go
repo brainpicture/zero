@@ -30,7 +30,7 @@ func Lang(language string) LangPack {
 }
 
 // Get fetch lang entry from langpack
-func (lp *LangPack) Get(name string) LangObj {
+func (lp LangPack) Get(name string) LangObj {
 	langObj, ok := lp[name]
 	if !ok {
 		langObj.str = "undefined"
@@ -47,9 +47,11 @@ func (lo *LangObj) Plural(num int64) {
 
 // Format will format data of Lang Obj
 func (lo *LangObj) Format(data S) string {
+	str := lo.str
 	for k, v := range data {
-		langStr = strings.Replace(lo.str, "$"+k, v, -1)
+		str = strings.Replace(str, "$"+k, v, -1)
 	}
+	return str
 }
 
 // AddLangPack will set langpack
