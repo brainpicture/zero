@@ -76,7 +76,7 @@ func AddLangPack(langKey string, langPack H) {
 				langObj.form2 = langType[1]
 			}
 			if len(langType) > 2 {
-				langObj.from3 = langType[2]
+				langObj.form3 = langType[2]
 			}
 		default:
 			panic("lang " + langKey + " key " + key + " has unsupported type, try string")
