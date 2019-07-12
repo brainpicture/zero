@@ -55,6 +55,11 @@ func (lo LangObj) Format(data S) string {
 	return str
 }
 
+// Str return language string
+func (lo LangObj) Str() string {
+	return lo.str
+}
+
 // AddLangPack will set langpack
 func AddLangPack(langKey string, langPack H) {
 	pack, ok := langPacks[langKey]
