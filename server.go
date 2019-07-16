@@ -566,7 +566,7 @@ func (srv *Server) GetRealIP() net.IP {
 	ip := srv.GetHeader("X-Real-IP")
 	if ip == "" {
 		ipFWD := srv.GetHeader("X-Forwarded-For")
-		fwdips := strings.Split(ipGoogle, ", ")
+		fwdips := strings.Split(ipFWD, ", ")
 		if len(fwdips) > 0 {
 			ip = fwdips[0]
 		}
