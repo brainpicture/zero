@@ -561,8 +561,8 @@ func (srv *Server) Env() *Environment {
 	return Env(srv)
 }
 
-// GetIP will return ip address of user
-func (srv *Server) GetIP() net.IP {
+// GetRealIP will return ip address of user
+func (srv *Server) GetRealIP() net.IP {
 	ip := srv.GetHeader("X-Real-IP")
 	if ip == "" {
 		ipFWD := srv.GetHeader("X-Forwarded-For")
