@@ -57,7 +57,7 @@ func (lo LangObj) Format(data S) string {
 
 // Set will set value for one variable
 func (lo LangObj) Set(key, value string) LangObj {
-	lo.str = strings.Replace(lo.str, "$"+k, v, -1)
+	lo.str = strings.Replace(lo.str, "$"+key, value, -1)
 	return lo
 }
 
