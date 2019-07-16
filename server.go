@@ -561,6 +561,20 @@ func (srv *Server) Env() *Environment {
 	return Env(srv)
 }
 
+// GetIP will return ip address of user
+func (srv *Server) GetIP() net.IP {
+	ip := srv.GetHeader("X-Real-IP")
+	if ip == "" {
+		ipFWD := srv.GetHeader("X-Forwarded-For")
+		fwdips := strings.Split(ipGoogle, ", ")
+		if len(fwdips) > 0 {
+			ip = fwdips[0]
+		}
+	}
+	IP := net.ParseIP(ip)
+	return IP
+}
+
 // Shutdown will gracefully shutdown the app, stopping receiving new connections but continue receive old one
 func (h *HTTP) Shutdown() error {
 	if !h.IsStarted() {
