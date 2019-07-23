@@ -477,6 +477,21 @@ func (srv *Server) Method() string {
 	return string(srv.Ctx.Method())
 }
 
+// Check perform check and trigger srv.Err if err is not nil
+func (srv *Server) Check(err error, text ...string) {
+	if err != nil {
+		if len(text) > 0 {
+			if len(text) > 1 {
+				srv.Err(text[0], text[1])
+			} else {
+				srv.Err(text[0], err)
+			}
+		} else {
+			srv.ErrServer("request_failed", err)
+		}
+	}
+}
+
 // GetSessionID return Session-ID hearder int64
 func (srv *Server) GetSessionID() int64 {
 	sessionIDStr := srv.GetHeader("Session-ID")
