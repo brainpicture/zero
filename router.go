@@ -16,17 +16,26 @@ var Methods = map[string]int{
 
 type routerTree struct {
 	Tree    map[string]*routerTree
-	Keys    []string
-	Handler map[int]func(srv *Server)
+	Methods map[int]routerMethodHandler
+	//Keys    []string
+	//Handler map[int]func(srv *Server)
+}
+
+type routerMethodHandler struct {
+	Keys   []string
+	Handle func(srv *Server)
 }
 
 func (p *routerTree) PushHandler(method int, parts []string, handler func(srv *Server), keys []string) {
 	if len(parts) == 0 {
-		p.Keys = keys
-		if p.Handler == nil {
-			p.Handler = map[int]func(srv *Server){}
+		methodHandler := routerMethodHandler{
+			Keys:   keys,
+			Handle: handler,
 		}
-		p.Handler[method] = handler
+		if p.Methods == nil {
+			p.Methods = map[int]routerMethodHandler{}
+		}
+		p.Methods[method] = methodHandler
 		return
 	}
 	row := parts[0]
@@ -52,27 +61,27 @@ func (p *routerTree) PushHandler(method int, parts []string, handler func(srv *S
 
 func (p *routerTree) getHandler(method int, parts []string, values []string) (func(srv *Server), []string, []string, error) {
 	if len(parts) == 0 {
-		if p.Handler == nil {
+		if p.Methods == nil {
 			return nil, nil, nil, errors.New("This path is not supported")
 		}
 		if method == Methods["*"] {
-			for _, h := range p.Handler {
-				return h, p.Keys, values, nil
+			for _, m := range p.Methods {
+				return m.Handle, m.Keys, values, nil
 			}
 		} else {
-			h, ok := p.Handler[method]
+			m, ok := p.Methods[method]
 			if ok {
-				return h, p.Keys, values, nil
+				return m.Handle, m.Keys, values, nil
 			} else {
-				h, ok := p.Handler[Methods["*"]]
+				m, ok := p.Methods[Methods["*"]]
 				if ok {
-					return h, p.Keys, values, nil
+					return m.Handle, m.Keys, values, nil
 				}
 			}
 		}
 		supported := []string{}
 		thisMethod := ""
-		for methodID, _ := range p.Handler {
+		for methodID := range p.Methods {
 			for k, v := range Methods {
 				if v == method {
 					thisMethod = k

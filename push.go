@@ -32,6 +32,7 @@ type Push struct {
 	Collapse         string
 	// Sender is prefix which whould be placed before Text field, like Sender: Text on ios, and as separate field on android
 	Sender string
+	Silent bool
 }
 
 type apnsAlert struct {
@@ -91,15 +92,15 @@ func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
 		if push.Sender != "" {
 			body = push.Sender + ": " + body
 		}
-		aps := H{
-			//	"sound": sound,
-			"alert": apnsAlert{
+		aps := H{}
+		if !push.Silent {
+			aps["alert"] = apnsAlert{
 				Title: push.Title,
 				Body:  body,
-			},
-		}
-		if sound != "" {
-			aps["sound"] = sound
+			}
+			if sound != "" {
+				aps["sound"] = sound
+			}
 		}
 		if push.Grouping != "" {
 			aps["thread-id"] = push.Grouping
