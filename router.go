@@ -12,6 +12,7 @@ var Methods = map[string]int{
 	"PATCH":  3,
 	"UPDATE": 4,
 	"DELETE": 5,
+	"PUT":    6,
 }
 
 type routerTree struct {

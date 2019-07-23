@@ -32,6 +32,11 @@ func (r *RestAPI) PATCH(path string, callback func(srv *Server)) {
 	r.http.handlers.PushHandler(Methods["PATCH"], r.joinPath(path), callback, []string{})
 }
 
+// PUT handler for PUT method
+func (r *RestAPI) PUT(path string, callback func(srv *Server)) {
+	r.http.handlers.PushHandler(Methods["PUT"], r.joinPath(path), callback, []string{})
+}
+
 // DELETE handler for DELETE method
 func (r *RestAPI) DELETE(path string, callback func(srv *Server)) {
 	r.http.handlers.PushHandler(Methods["DELETE"], r.joinPath(path), callback, []string{})
