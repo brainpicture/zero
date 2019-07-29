@@ -498,5 +498,5 @@ func Parallel(tasks ...func() H) (result []H) {
 }
 
 func init() {
-	reURL = regexp.MustCompile(`(?i)((http|ftp|https):\/\/)?([\w\-_]+(?:(?:\.[\p{L}\-_]+)+))([\p{L}\-\.,@?^=%&amp;:/~\+#]*[\p{L}\-\@?^=%&amp;/~\+#])?`)
+	reURL = regexp.MustCompile(`(?i)((http|ftp|https):\/\/)?([\p{L}\-_]+(?:(?:\.[\p{L}\-_]+)+))([\p{L}\d_\-\.,@?^=%&amp;:/~\+#]*[\p{L}\d_\-\@?^=%&amp;/~\+#])?`)
 }
