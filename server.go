@@ -443,6 +443,7 @@ func (srv *Server) SetCookie(key string, value string) {
 	cookie.SetKey(key)
 	cookie.SetValue(value)
 	cookie.SetExpire(time.Now().Add(time.Hour * 24 * 365 * 2))
+	cookie.SetPath("/")
 	srv.Ctx.Response.Header.SetCookie(&cookie)
 }
 
