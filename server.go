@@ -3,6 +3,7 @@ package zero
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ type HTTP struct {
 	CORS      string
 	server    *fasthttp.Server
 	started   bool // true if server is started
+	GZip      bool
 	mux       sync.Mutex
 }
 
@@ -45,6 +47,14 @@ type Server struct {
 	OnFail      func(int, string, interface{})
 }
 
+func (srv *Server) Write(data []byte) {
+	if srv.http.GZip {
+		fasthttp.WriteGzip(srv.Ctx.Response.BodyWriter(), data)
+	} else {
+		srv.Ctx.Write(data)
+	}
+}
+
 // Resp writes any data as JSON to HTTP stream
 func (srv *Server) Resp(data interface{}) {
 	srv.Ctx.SetContentType("application/json; charset=utf8")
@@ -52,7 +62,16 @@ func (srv *Server) Resp(data interface{}) {
 		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
 	}
 
-	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
+	writer := srv.Ctx.Response.BodyWriter()
+	var encoder *json.Encoder
+	if srv.http.GZip {
+		w := gzip.NewWriter(writer)
+		defer w.Close()
+		encoder = json.NewEncoder(w)
+		srv.Ctx.Response.Header.Add("Content-Encoding", "gzip")
+	} else {
+		encoder = json.NewEncoder(writer)
+	}
 	encoder.SetEscapeHTML(false)
 
 	err := encoder.Encode(data)
@@ -83,7 +102,7 @@ func (srv *Server) RespJSONP(data interface{}) {
 	if err != nil {
 		srv.Err("system", err)
 	}
-	srv.Ctx.Write([]byte(cbName + "(" + string(jsonData) + ")"))
+	srv.Write([]byte(cbName + "(" + string(jsonData) + ")"))
 	srv.Ctx.SetContentType("application/javascript; charset=utf8")
 	if srv.OnResponse != nil {
 		srv.OnResponse(data)
@@ -102,7 +121,7 @@ func (srv *Server) HTML(data []byte) {
 	if srv.http.CORS != "" {
 		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
 	}
-	srv.Ctx.Write(data)
+	srv.Write(data)
 	srv.Ctx.SetContentType("text/html; charset=utf8")
 }
 
@@ -111,7 +130,7 @@ func (srv *Server) JS(data []byte) {
 	if srv.http.CORS != "" {
 		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
 	}
-	srv.Ctx.Write(data)
+	srv.Write(data)
 	srv.Ctx.SetContentType("application/javascript; charset=utf8")
 }
 
@@ -120,7 +139,7 @@ func (srv *Server) FileBlob(data []byte, contentType string) {
 	if srv.http.CORS != "" {
 		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
 	}
-	srv.Ctx.Write(data)
+	srv.Write(data)
 	srv.Ctx.SetContentType(contentType)
 }
 
@@ -333,7 +352,16 @@ func (srv *Server) SendError(httpCode int, code string, text interface{}) {
 		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
 	}
 
-	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
+	writer := srv.Ctx.Response.BodyWriter()
+	var encoder *json.Encoder
+	if srv.http.GZip {
+		w := gzip.NewWriter(writer)
+		defer w.Close()
+		encoder = json.NewEncoder(w)
+		srv.Ctx.Response.Header.Add("Content-Encoding", "gzip")
+	} else {
+		encoder = json.NewEncoder(writer)
+	}
 	encoder.SetEscapeHTML(false)
 
 	dataError := struct {
