@@ -55,13 +55,9 @@ func (srv *Server) Write(data []byte) {
 	}
 }
 
-// Resp writes any data as JSON to HTTP stream
-func (srv *Server) Resp(data interface{}) {
+// WriteJSON will push JSON data to the user
+func (srv *Server) WriteJSON(data interface{}) error {
 	srv.Ctx.SetContentType("application/json; charset=utf8")
-	if srv.http.CORS != "" {
-		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
-	}
-
 	writer := srv.Ctx.Response.BodyWriter()
 	var encoder *json.Encoder
 	if srv.http.GZip {
@@ -73,11 +69,21 @@ func (srv *Server) Resp(data interface{}) {
 		encoder = json.NewEncoder(writer)
 	}
 	encoder.SetEscapeHTML(false)
+	return encoder.Encode(data)
+}
 
-	err := encoder.Encode(data)
+// Resp writes any data as JSON to HTTP stream
+func (srv *Server) Resp(data interface{}) {
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+	}
+
+	err := srv.WriteJSON(data)
+
 	if err != nil {
 		srv.Err("system", err)
 	}
+
 	if srv.OnResponse != nil {
 		srv.OnResponse(data)
 	}
@@ -352,18 +358,6 @@ func (srv *Server) SendError(httpCode int, code string, text interface{}) {
 		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
 	}
 
-	writer := srv.Ctx.Response.BodyWriter()
-	var encoder *json.Encoder
-	if srv.http.GZip {
-		w := gzip.NewWriter(writer)
-		defer w.Close()
-		encoder = json.NewEncoder(w)
-		srv.Ctx.Response.Header.Add("Content-Encoding", "gzip")
-	} else {
-		encoder = json.NewEncoder(writer)
-	}
-	encoder.SetEscapeHTML(false)
-
 	dataError := struct {
 		Code string `json:"code"`
 		Desc string `json:"desc"`
@@ -372,7 +366,7 @@ func (srv *Server) SendError(httpCode int, code string, text interface{}) {
 		Desc: fmt.Sprintf("%s", text),
 	}
 
-	encoder.Encode(dataError)
+	srv.WriteJSON(dataError)
 }
 
 // ErrJSONP http api error as JSONP
