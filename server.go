@@ -687,7 +687,8 @@ func (h *HTTP) Serve(portHTTP string) {
 	// SO_REUSEPORT allows linear scaling server performance on multi-CPU servers.
 	ln, err := reuseport.Listen("tcp4", ":"+portHTTP)
 	h.server = &fasthttp.Server{
-		Handler: ctxHanler,
+		Handler:               ctxHanler,
+		NoDefaultServerHeader: true,
 	}
 	if err == nil {
 		err = h.server.Serve(ln)
