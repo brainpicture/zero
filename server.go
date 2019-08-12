@@ -65,8 +65,10 @@ func (srv *Server) WriteJSON(data interface{}) error {
 		defer w.Close()
 		encoder = json.NewEncoder(w)
 		srv.Ctx.Response.Header.Add("Content-Encoding", "gzip")
+		fmt.Println("Writing GZIP")
 	} else {
 		encoder = json.NewEncoder(writer)
+		fmt.Println("No GZIP")
 	}
 	encoder.SetEscapeHTML(false)
 	return encoder.Encode(data)
