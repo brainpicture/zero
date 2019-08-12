@@ -50,6 +50,7 @@ type Server struct {
 func (srv *Server) Write(data []byte) {
 	if srv.http.GZip {
 		fasthttp.WriteGzip(srv.Ctx.Response.BodyWriter(), data)
+		srv.Ctx.Response.Header.Add("Content-Encoding", "gzip")
 	} else {
 		srv.Ctx.Write(data)
 	}
