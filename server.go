@@ -45,10 +45,11 @@ type Server struct {
 	http        *HTTP
 	OnResponse  func(interface{})
 	OnFail      func(int, string, interface{})
+	supportGZip bool
 }
 
 func (srv *Server) Write(data []byte) {
-	if srv.http.GZip {
+	if srv.supportGZip {
 		fasthttp.WriteGzip(srv.Ctx.Response.BodyWriter(), data)
 		srv.Ctx.Response.Header.Add("Content-Encoding", "gzip")
 	} else {
@@ -61,7 +62,7 @@ func (srv *Server) WriteJSON(data interface{}) error {
 	srv.Ctx.SetContentType("application/json; charset=utf8")
 	writer := srv.Ctx.Response.BodyWriter()
 	var encoder *json.Encoder
-	if srv.http.GZip {
+	if srv.supportGZip {
 		w := gzip.NewWriter(writer)
 		defer w.Close()
 		encoder = json.NewEncoder(w)
@@ -637,6 +638,12 @@ func (h *HTTP) Serve(portHTTP string) {
 			Ctx:  ctx,
 			Path: string(ctx.Path()),
 			http: h,
+		}
+		if h.GZip {
+			gzipHeader := srv.GetHeader("Accept-Encoding")
+			if gzipHeader == "*" || strings.Contains(gzipHeader, "gzip") {
+				srv.supportGZip = true
+			}
 		}
 		defer func() {
 			if r := recover(); r != nil {
