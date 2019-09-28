@@ -26,6 +26,12 @@ type S map[string]string
 // V allow to pass list of elements of any type
 type V []interface{}
 
+// TwoInt64 used to store two int indexes
+type TwoInt64 struct {
+	I1 int64
+	I2 int64
+}
+
 // KV represents an key value array
 type KV struct {
 	Key   string
