@@ -494,7 +494,11 @@ func (srv *Server) GetLanguage() string {
 
 // GetUserAgent returns user agent header
 func (srv *Server) GetUserAgent() string {
-	return srv.GetHeader("User-Agent")
+	ua := srv.GetHeader("X-User-Agent")
+	if ua == "" {
+		ua = srv.GetHeader("User-Agent")
+	}
+	return ua
 }
 
 // Method will return method from requiest header
