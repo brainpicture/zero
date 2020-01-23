@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -501,6 +502,17 @@ func Parallel(tasks ...func() H) (result []H) {
 		result = append(result, <-resultChan)
 	}
 	return
+}
+
+// Recover is a shortcut to quickly catch painc in defer
+func Recover() {
+	if r := recover(); r != nil {
+		apiErrStr := fmt.Sprintf("%v", r)
+		if apiErrStr != "skip" {
+			fmt.Println("UNCATCHED PANIC", r)
+			debug.PrintStack()
+		}
+	}
 }
 
 func init() {
