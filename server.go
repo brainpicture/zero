@@ -535,6 +535,26 @@ func (srv *Server) GetIP() net.IP {
 	return srv.Ctx.RemoteIP()
 }
 
+// Background will run anonymous goroutine in background with proper error catching
+func (srv *Server) Background(handler func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				apiErrStr := fmt.Sprintf("%v", r)
+				if apiErrStr != "skip" {
+					if srv.http.OnPanic != nil {
+						srv.http.OnPanic(srv, apiErrStr+"\n\n"+string(debug.Stack()))
+					} else {
+						fmt.Println("UNCATCHED PANIC", r)
+						debug.PrintStack()
+					}
+				}
+			}
+		}()
+		handler()
+	}()
+}
+
 // EventSource starts an event server
 func (srv *Server) EventSource(callback func(*ServerEvents)) {
 	srv.Ctx.SetContentType("text/event-stream; charset=UTF-8")
