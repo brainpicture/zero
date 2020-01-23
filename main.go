@@ -504,8 +504,8 @@ func Parallel(tasks ...func() H) (result []H) {
 	return
 }
 
-// Recover is a shortcut to quickly catch painc in defer
-func Recover() {
+// CheckRecover is a shortcut to quickly catch painc in defer
+func CheckRecover() {
 	if r := recover(); r != nil {
 		apiErrStr := fmt.Sprintf("%v", r)
 		if apiErrStr != "skip" {
