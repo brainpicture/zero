@@ -119,22 +119,22 @@ func (e *Environment) Ver(a int) bool {
 
 // IsIOS checks if platform is iOS
 func (e *Environment) IsIOS() bool {
-	return e.Platform == 1
+	return e.Platform == EnvPlatformIOS
 }
 
 // IsAndroid checks if platform is Android
 func (e *Environment) IsAndroid() bool {
-	return e.Platform == 2
-}
-
-// IsWeb checks if platform is Web
-func (e *Environment) IsWeb() bool {
-	return e.Platform == 3
+	return e.Platform == EnvPlatformAndroid
 }
 
 // IsBot return true if platform is bot
 func (e *Environment) IsBot() bool {
 	return e.Platform == EnvPlatformBot
+}
+
+// IsWeb checks if platform is Web
+func (e *Environment) IsWeb() bool {
+	return e.Platform == EnvPlatformWeb
 }
 
 // Plural will return num with proper word
