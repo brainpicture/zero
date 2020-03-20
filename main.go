@@ -450,16 +450,40 @@ func I64Str(val int64) string {
 	return EncodeInt64(val, AlphabetEncodingSymbols)
 }
 
+// UI64Str converts int to short string with numbers and letters
+func UI64Str(val uint64) string {
+	return EncodeUInt64(val, AlphabetEncodingSymbols)
+}
+
 // StrI64 converts int to short string with numbers and letters
 func StrI64(val string) int64 {
 	return DecodeInt64(val, AlphabetEncodingSymbols)
+}
+
+// StrUI64 converts int to short string with numbers and letters
+func StrUI64(val string) uint64 {
+	return DecodeUInt64(val, AlphabetEncodingSymbols)
 }
 
 // EncodeInt64 encodes int using passed symbols
 func EncodeInt64(val int64, symbols string) string {
 	l := int64(len(symbols))
 	link := ""
+	if val < 0 {
+		val = -val
+		link = "-"
+	}
+	for val >= 1 {
+		link += string(symbols[int(val%l)])
+		val /= l
+	}
+	return link
+}
 
+// EncodeUInt64 encodes int using passed symbols
+func EncodeUInt64(val uint64, symbols string) string {
+	l := uint64(len(symbols))
+	link := ""
 	for val >= 1 {
 		link += string(symbols[int(val%l)])
 		val /= l
@@ -472,9 +496,26 @@ func DecodeInt64(link string, symbols string) int64 {
 	val := int64(0)
 	l := int64(len(symbols))
 	pow := int64(1)
+	negative := (link[0] == '-')
 	for _, symbol := range link {
 		i := strings.Index(symbols, string(symbol))
 		val += int64(i) * pow
+		pow *= l
+	}
+	if negative {
+		val = -val
+	}
+	return val
+}
+
+// DecodeUInt64 decodes int using passed symbols
+func DecodeUInt64(link string, symbols string) uint64 {
+	val := uint64(0)
+	l := uint64(len(symbols))
+	pow := uint64(1)
+	for _, symbol := range link {
+		i := strings.Index(symbols, string(symbol))
+		val += uint64(i) * pow
 		pow *= l
 	}
 	return val
