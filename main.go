@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	mrand "math/rand"
 	"os"
 	"reflect"
 	"regexp"
@@ -444,6 +445,16 @@ type Plot2D struct {
 
 // AlphabetEncodingSymbols is list of symbols you can use to encode different strings
 const AlphabetEncodingSymbols = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+// RandomString will return random string with setted length
+func RandomString(n int) string {
+	lenWords := len(AlphabetEncodingSymbols)
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = AlphabetEncodingSymbols[mrand.Intn(lenWords)]
+	}
+	return string(b)
+}
 
 // I64Str converts int to short string with numbers and letters
 func I64Str(val int64) string {
