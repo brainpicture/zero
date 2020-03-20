@@ -94,11 +94,6 @@ func (e *Environment) SetPlatform(platform string) {
 	}
 }
 
-// IsBot return true if platform is bot
-func (e *Environment) IsBot() bool {
-	return e.Platform == EnvPlatformBot
-}
-
 // PlatformString return string for platform
 func (e *Environment) PlatformString() string {
 	switch e.Platform {
@@ -106,6 +101,8 @@ func (e *Environment) PlatformString() string {
 		return "ios"
 	case EnvPlatformAndroid:
 		return "android"
+	case EnvPlatformWeb:
+		return "web"
 	case EnvPlatformBot:
 		return "bot"
 	}
@@ -122,12 +119,22 @@ func (e *Environment) Ver(a int) bool {
 
 // IsIOS checks if platform is iOS
 func (e *Environment) IsIOS() bool {
-	return e.Platform == 1
+	return e.Platform == EnvPlatformIOS
 }
 
 // IsAndroid checks if platform is Android
 func (e *Environment) IsAndroid() bool {
-	return e.Platform == 2
+	return e.Platform == EnvPlatformAndroid
+}
+
+// IsBot return true if platform is bot
+func (e *Environment) IsBot() bool {
+	return e.Platform == EnvPlatformBot
+}
+
+// IsWeb checks if platform is Web
+func (e *Environment) IsWeb() bool {
+	return e.Platform == EnvPlatformWeb
 }
 
 // Plural will return num with proper word
