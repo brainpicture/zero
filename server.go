@@ -620,6 +620,14 @@ func (srv *Server) ParseBody() H {
 	return input
 }
 
+// FillBody allow to fill a struct with data from body
+func (srv *Server) FillBody(input interface{}) {
+	err := json.Unmarshal(srv.GetBody(), input)
+	if err != nil {
+		srv.Err("user_object", "Body should be json")
+	}
+}
+
 // Env will return environment for
 func (srv *Server) Env() *Environment {
 	return Env(srv)
