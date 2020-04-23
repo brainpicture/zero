@@ -23,7 +23,8 @@ func Lang(language string) LangPack {
 	if !ok {
 		langPack, ok = langPacks["en"]
 		if !ok {
-			panic("zero: Lang: en langpack not set")
+			return LangPack{}
+			//panic("zero: Lang: en langpack not set")
 		}
 	}
 	return langPack
