@@ -700,9 +700,9 @@ func (h *HTTP) Serve(portHTTP string) {
 				h.OnOptions(&srv)
 				return
 			}
-			if srv.http.CORS == "*" {
+			if srv.http.CORS != "" {
 				srv.SetHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PATCH, UPDATE")
-				srv.SetHeader("Access-Control-Allow-Headers", "X-Token")
+				srv.SetHeader("Access-Control-Allow-Headers", "*")
 				srv.RespOk()
 				return
 			}
