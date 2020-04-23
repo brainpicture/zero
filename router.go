@@ -7,14 +7,13 @@ import (
 
 // Methods list of allowed methods
 var Methods = map[string]int{
-	"*":       0,
-	"GET":     1,
-	"POST":    2,
-	"PATCH":   3,
-	"UPDATE":  4,
-	"DELETE":  5,
-	"PUT":     6,
-	"OPTIONS": 7,
+	"*":      0,
+	"GET":    1,
+	"POST":   2,
+	"PATCH":  3,
+	"UPDATE": 4,
+	"DELETE": 5,
+	"PUT":    6,
 }
 
 type routerTree struct {

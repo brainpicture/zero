@@ -29,6 +29,7 @@ type HTTP struct {
 	OnError   func(srv *Server, name, text string)
 	OnPanic   func(srv *Server, stackTrace string)
 	OnRequest func(srv *Server)
+	OnOptions func(srv *Server)
 	CORS      string
 	server    *fasthttp.Server
 	started   bool // true if server is started
@@ -695,8 +696,13 @@ func (h *HTTP) Serve(portHTTP string) {
 		//start := time.Now()
 		methodStr := srv.Method()
 		if methodStr == "OPTIONS" {
+			if h.OnOptions != nil {
+				h.OnOptions(&srv)
+				return
+			}
 			if srv.http.CORS == "*" {
 				srv.SetHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PATCH, UPDATE")
+				srv.SetHeader("Access-Control-Allow-Headers", "X-Token")
 				srv.RespOk()
 				return
 			}

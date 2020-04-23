@@ -47,11 +47,6 @@ func (r *RestAPI) UPDATE(path string, callback func(srv *Server)) {
 	r.http.handlers.PushHandler(Methods["UPDATE"], r.joinPath(path), callback, []string{})
 }
 
-// OPTIONS handler for OPTIONS method
-func (r *RestAPI) OPTIONS(path string, callback func(srv *Server)) {
-	r.http.handlers.PushHandler(Methods["OPTIONS"], r.joinPath(path), callback, []string{})
-}
-
 // SetCORS setup cors header for the api
 func (r *RestAPI) SetCORS(allow string) {
 	r.http.CORS = allow
