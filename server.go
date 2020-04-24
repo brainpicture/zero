@@ -551,6 +551,10 @@ func (srv *Server) EventSource(callback func(*ServerEvents)) {
 	srv.Ctx.Response.Header.Set("Connection", "keep-alive")
 	srv.Ctx.Response.Header.Set("Transfer-Encoding", "chunked")
 	srv.writeCORSHeader()
+	if srv.http.CORS != "" {
+		srv.Ctx.Response.Header.Set("Access-Control-Expose-Headers", "*")
+		srv.Ctx.Response.Header.Set("Access-Control-Allow-Credentials", "true")
+	}
 
 	lastEventIDStr := srv.GetHeader("Last-Event-ID")
 	if lastEventIDStr == "" {
