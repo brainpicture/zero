@@ -550,8 +550,7 @@ func (srv *Server) EventSource(callback func(*ServerEvents)) {
 	srv.Ctx.Response.Header.Set("Cache-Control", "no-cache")
 	srv.Ctx.Response.Header.Set("Connection", "keep-alive")
 	srv.Ctx.Response.Header.Set("Transfer-Encoding", "chunked")
-	if srv.http.CORS != "*" {
-
+	if srv.http.CORS == "*" {
 		origin := srv.GetHeader("Origin")
 		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", origin)
 	} else {
