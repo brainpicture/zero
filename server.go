@@ -563,12 +563,24 @@ func (srv *Server) EventSource(callback func(*ServerEvents)) {
 	sessionID := srv.GetSessionID()
 
 	srv.Ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
+		defer func() {
+			if r := recover(); r != nil {
+				apiErrStr := fmt.Sprintf("%v", r)
+				if apiErrStr != "skip" {
+					if srv.http.OnPanic != nil {
+						srv.http.OnPanic(srv, apiErrStr+"\n\n"+string(debug.Stack()))
+					} else {
+						fmt.Println("UNCATCHED PANIC", r)
+						debug.PrintStack()
+					}
+				}
+			}
+		}()
 		se := ServerEvents{
 			Writer:    w,
 			EventID:   I64(lastEventIDStr),
 			SessionID: sessionID,
 		}
-
 		callback(&se)
 	})
 }

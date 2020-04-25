@@ -66,7 +66,7 @@ func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
 		client.NewFcmMsgTo(deviceToken, pushData)
 		_, err := client.Send()
 		if err != nil {
-			fmt.Println("ANDROID! push send error", err)
+			//fmt.Println("ANDROID! push send error", err)
 			return err
 		} else {
 			//fmt.Println("ANDROID! resp", resp, J(pushData))
