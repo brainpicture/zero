@@ -169,5 +169,9 @@ func (e *Environment) IP() net.IP {
 		return net.ParseIP("127.0.0.1")
 	}
 	ipStr := e.srv.GetHeader("X-Real-IP")
+	if ipStr == "" {
+		ipStrFull := e.srv.GetHeader("X-Forwarded-For")
+		ipStr, _ = SplitDoubleString(ipStrFull, ",")
+	}
 	return net.ParseIP(ipStr)
 }
