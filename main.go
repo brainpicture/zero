@@ -19,9 +19,6 @@ import (
 	"unicode"
 )
 
-// H allow to describe custom json easily
-type H map[string]interface{}
-
 // S allow to describe string hashmaps easily
 type S map[string]string
 
@@ -41,39 +38,6 @@ type KV struct {
 }
 
 var reURL *regexp.Regexp
-
-// String return field as string
-func (h H) String(field string) string {
-	val, ok := h[field]
-	if ok {
-		return J(val)
-	}
-	return ""
-}
-
-// Int return field as int
-func (h H) Int(field string) int {
-	val, ok := h[field]
-	if ok {
-		res, ok := val.(int)
-		if ok {
-			return res
-		}
-	}
-	return 0
-}
-
-// Int64 return field as int64
-func (h H) Int64(field string) int64 {
-	val, ok := h[field]
-	if ok {
-		res, ok := val.(int64)
-		if ok {
-			return res
-		}
-	}
-	return int64(0)
-}
 
 // J joins whatever passed to an string
 func J(a ...interface{}) string {
