@@ -17,21 +17,37 @@ func (h H) String(field string) string {
 func (h H) Int(field string) int {
 	val, ok := h[field]
 	if ok {
-		res, ok := val.(int)
-		if ok {
+		switch res := val.(type) {
+		case int64:
+			return int(res)
+		case int:
 			return res
+		case int32:
+			return int(res)
+		case uint64:
+			return int(res)
+		case uint32:
+			return int(res)
 		}
 	}
-	return 0
+	return int(0)
 }
 
 // Int64 return field as int64
 func (h H) Int64(field string) int64 {
 	val, ok := h[field]
 	if ok {
-		res, ok := val.(int64)
-		if ok {
+		switch res := val.(type) {
+		case int64:
 			return res
+		case int:
+			return int64(res)
+		case int32:
+			return int64(res)
+		case uint64:
+			return int64(res)
+		case uint32:
+			return int64(res)
 		}
 	}
 	return int64(0)
