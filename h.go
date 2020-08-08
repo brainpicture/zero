@@ -28,6 +28,8 @@ func (h H) Int(field string) int {
 			return int(res)
 		case uint32:
 			return int(res)
+		case float64:
+			return int(res)
 		}
 	}
 	return int(0)
@@ -47,6 +49,8 @@ func (h H) Int64(field string) int64 {
 		case uint64:
 			return int64(res)
 		case uint32:
+			return int64(res)
+		case float64:
 			return int64(res)
 		}
 	}
