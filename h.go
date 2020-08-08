@@ -69,6 +69,30 @@ func (h H) Float(field string) float64 {
 	return float64(0)
 }
 
+// Bool will return field as bool
+func (h H) Bool(field string) bool {
+	val, ok := h[field]
+	if ok {
+		switch res := val.(type) {
+		case int64:
+			return res != 0
+		case int:
+			return res != 0
+		case int32:
+			return res != 0
+		case uint64:
+			return res != 0
+		case uint32:
+			return res != 0
+		case float64:
+			return res != 0
+		case bool:
+			return res
+		}
+	}
+	return false
+}
+
 // H return field as inner object of H
 func (h H) H(field string) H {
 	val, ok := h[field]
