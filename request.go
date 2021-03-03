@@ -1,12 +1,6 @@
 package zero
 
-import (
-	"encoding/json"
-	"fmt"
-	"strconv"
-)
-
-// Request request via method or smth
+/*// Request request via method or smth
 type Request struct {
 	ID     int         `json:"id"`
 	Method string      `json:"method"`
@@ -152,4 +146,4 @@ func (req *Request) ParamInt(name string) int {
 	} else {
 		panic("param:" + name + " is undefined")
 	}
-}
+}*/

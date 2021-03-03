@@ -18,32 +18,32 @@ func (r *RestAPI) joinPath(path string) []string {
 }
 
 // GET handler for GET method
-func (r *RestAPI) GET(path string, callback func(srv *Server)) {
+func (r *RestAPI) GET(path string, callback func(req *Request)) {
 	r.http.handlers.PushHandler(Methods["GET"], r.joinPath(path), callback, []string{})
 }
 
 // POST handler for POST method
-func (r *RestAPI) POST(path string, callback func(srv *Server)) {
+func (r *RestAPI) POST(path string, callback func(req *Request)) {
 	r.http.handlers.PushHandler(Methods["POST"], r.joinPath(path), callback, []string{})
 }
 
 // PATCH handler for PATCH method
-func (r *RestAPI) PATCH(path string, callback func(srv *Server)) {
+func (r *RestAPI) PATCH(path string, callback func(req *Request)) {
 	r.http.handlers.PushHandler(Methods["PATCH"], r.joinPath(path), callback, []string{})
 }
 
 // PUT handler for PUT method
-func (r *RestAPI) PUT(path string, callback func(srv *Server)) {
+func (r *RestAPI) PUT(path string, callback func(req *Request)) {
 	r.http.handlers.PushHandler(Methods["PUT"], r.joinPath(path), callback, []string{})
 }
 
 // DELETE handler for DELETE method
-func (r *RestAPI) DELETE(path string, callback func(srv *Server)) {
+func (r *RestAPI) DELETE(path string, callback func(req *Request)) {
 	r.http.handlers.PushHandler(Methods["DELETE"], r.joinPath(path), callback, []string{})
 }
 
 // UPDATE handler for UPDATE method
-func (r *RestAPI) UPDATE(path string, callback func(srv *Server)) {
+func (r *RestAPI) UPDATE(path string, callback func(req *Request)) {
 	r.http.handlers.PushHandler(Methods["UPDATE"], r.joinPath(path), callback, []string{})
 }
 

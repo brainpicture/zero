@@ -6,7 +6,7 @@ import (
 
 // Pagination used to describe pagination input
 type Pagination struct {
-	srv          *Server
+	req          *Request
 	offset       int64
 	from         string
 	nextFrom     string
@@ -45,7 +45,7 @@ func (p *Pagination) Wrap(items interface{}) *PaginationWrap {
 // CountMax will send error if count bigger than limit
 func (p *Pagination) CountMax(limit int) {
 	if p.Count > limit {
-		p.srv.Err("count_field", "count field is invalid, too big")
+		p.req.Err("count_field", "count field is invalid, too big")
 	}
 }
 

@@ -22,7 +22,7 @@ const (
 
 // Environment defines user params like language and platform
 type Environment struct {
-	srv        *Server
+	req        *Request
 	Language   string
 	Country    string
 	Version    int
@@ -38,12 +38,12 @@ type Environment struct {
 // Example: 1 Android/3/23 ru nexus_6_345
 
 // Env returns user environment
-func Env(srv *Server) *Environment {
+func Env(req *Request) *Environment {
 	// take care, this function should never fire any panic
 	env := Environment{
-		srv: srv,
+		req: req,
 	}
-	ua := srv.GetUserAgent()
+	ua := req.GetUserAgent()
 	parts := strings.Split(ua, " ")
 	if len(parts) < 3 {
 		return &env
@@ -165,12 +165,12 @@ func (e *Environment) LangToInt() uint8 {
 
 // IP will return server IP
 func (e *Environment) IP() net.IP {
-	if e.srv == nil {
+	if e.req == nil {
 		return net.ParseIP("127.0.0.1")
 	}
-	ipStr := e.srv.GetHeader("X-Real-IP")
+	ipStr := e.req.GetHeader("X-Real-IP")
 	if ipStr == "" {
-		ipStrFull := e.srv.GetHeader("X-Forwarded-For")
+		ipStrFull := e.req.GetHeader("X-Forwarded-For")
 		ipStr, _ = SplitDoubleString(ipStrFull, ",")
 	}
 	return net.ParseIP(ipStr)

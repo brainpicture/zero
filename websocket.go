@@ -10,7 +10,7 @@ import (
 )
 
 // UpgradeWS upgrades http request to websocket
-func (srv *Server) UpgradeWS(cb func(req *Request)) *Socket {
+func (req *Request) UpgradeWS(cb func(req *Request)) *Socket {
 	soc := Socket{
 		Write: make(chan []byte),
 		Read:  make(chan []byte),
@@ -64,7 +64,7 @@ func (srv *Server) UpgradeWS(cb func(req *Request)) *Socket {
 		}()
 	})
 
-	err := upgrader.Upgrade(srv.Ctx) // returns only error, executes the handler you defined on the websocket.New before (the 'chat' function)
+	err := upgrader.Upgrade(req.Ctx) // returns only error, executes the handler you defined on the websocket.New before (the 'chat' function)
 	if err != nil {
 		fmt.Println("WS upgrade error", err)
 	}

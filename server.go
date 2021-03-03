@@ -19,17 +19,17 @@ import (
 	"github.com/valyala/fasthttp/reuseport"
 )
 
-//var httpHandlers = map[string]func(srv *Server){}
+//var httpHandlers = map[string]func(req *Request){}
 
 //var httpHandlers = routerTree{}
 
 // HTTP main type for http server
 type HTTP struct {
 	handlers  routerTree
-	OnError   func(srv *Server, name, text string)
-	OnPanic   func(srv *Server, stackTrace string)
-	OnRequest func(srv *Server)
-	OnOptions func(srv *Server)
+	OnError   func(req *Request, name, text string)
+	OnPanic   func(req *Request, stackTrace string)
+	OnRequest func(req *Request)
+	OnOptions func(req *Request)
 	CORS      string
 	server    *fasthttp.Server
 	started   bool // true if server is started
@@ -37,8 +37,8 @@ type HTTP struct {
 	mux       sync.Mutex
 }
 
-// Server is an wrapper around fasthttp
-type Server struct {
+// Request is an wrapper around fasthttp
+type Request struct {
 	Ctx         *fasthttp.RequestCtx
 	Path        string
 	PathParams  map[string]string
@@ -49,25 +49,25 @@ type Server struct {
 	supportGZip bool
 }
 
-func (srv *Server) Write(data []byte) {
-	if srv.supportGZip {
-		fasthttp.WriteGzip(srv.Ctx.Response.BodyWriter(), data)
-		srv.Ctx.Response.Header.Add("Content-Encoding", "gzip")
+func (req *Request) Write(data []byte) {
+	if req.supportGZip {
+		fasthttp.WriteGzip(req.Ctx.Response.BodyWriter(), data)
+		req.Ctx.Response.Header.Add("Content-Encoding", "gzip")
 	} else {
-		srv.Ctx.Write(data)
+		req.Ctx.Write(data)
 	}
 }
 
 // WriteJSON will push JSON data to the user
-func (srv *Server) WriteJSON(data interface{}) error {
-	srv.Ctx.SetContentType("application/json; charset=utf8")
-	writer := srv.Ctx.Response.BodyWriter()
+func (req *Request) WriteJSON(data interface{}) error {
+	req.Ctx.SetContentType("application/json; charset=utf8")
+	writer := req.Ctx.Response.BodyWriter()
 	var encoder *json.Encoder
-	if srv.supportGZip {
+	if req.supportGZip {
 		w := gzip.NewWriter(writer)
 		defer w.Close()
 		encoder = json.NewEncoder(w)
-		srv.Ctx.Response.Header.Add("Content-Encoding", "gzip")
+		req.Ctx.Response.Header.Add("Content-Encoding", "gzip")
 	} else {
 		encoder = json.NewEncoder(writer)
 	}
@@ -75,86 +75,86 @@ func (srv *Server) WriteJSON(data interface{}) error {
 	return encoder.Encode(data)
 }
 
-func (srv *Server) writeCORSHeader() {
-	if srv.http.CORS != "" {
-		srv.Ctx.Response.Header.Set("Access-Control-Allow-Origin", srv.http.CORS)
+func (req *Request) writeCORSHeader() {
+	if req.http.CORS != "" {
+		req.Ctx.Response.Header.Set("Access-Control-Allow-Origin", req.http.CORS)
 	}
 }
 
 // Resp writes any data as JSON to HTTP stream
-func (srv *Server) Resp(data interface{}) {
-	srv.writeCORSHeader()
+func (req *Request) Resp(data interface{}) {
+	req.writeCORSHeader()
 
-	err := srv.WriteJSON(data)
+	err := req.WriteJSON(data)
 
 	if err != nil {
-		srv.Err("system", err)
+		req.Err("system", err)
 	}
 
-	if srv.OnResponse != nil {
-		srv.OnResponse(data)
+	if req.OnResponse != nil {
+		req.OnResponse(data)
 	}
 }
 
 // StreamBody will stream data to the client
-func (srv *Server) StreamBody(reader io.Reader, contentLength int64, contentType string) {
-	srv.Ctx.SetContentType(contentType + "; charset=utf8")
-	srv.writeCORSHeader()
-	srv.Ctx.SetBodyStream(reader, int(contentLength))
+func (req *Request) StreamBody(reader io.Reader, contentLength int64, contentType string) {
+	req.Ctx.SetContentType(contentType + "; charset=utf8")
+	req.writeCORSHeader()
+	req.Ctx.SetBodyStream(reader, int(contentLength))
 }
 
 // RespJSONP writes any data as JSONP to HTTP stream
-func (srv *Server) RespJSONP(data interface{}) {
-	srv.writeCORSHeader()
-	cbName := srv.GetParam("jsoncallback")
+func (req *Request) RespJSONP(data interface{}) {
+	req.writeCORSHeader()
+	cbName := req.GetParam("jsoncallback")
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		srv.Err("system", err)
+		req.Err("system", err)
 	}
-	srv.Write([]byte(cbName + "(" + string(jsonData) + ")"))
-	srv.Ctx.SetContentType("application/javascript; charset=utf8")
-	if srv.OnResponse != nil {
-		srv.OnResponse(data)
+	req.Write([]byte(cbName + "(" + string(jsonData) + ")"))
+	req.Ctx.SetContentType("application/javascript; charset=utf8")
+	if req.OnResponse != nil {
+		req.OnResponse(data)
 	}
 }
 
 // RespOk returns ok answer, means successfully performed action
-func (srv *Server) RespOk() {
-	srv.Resp(H{
+func (req *Request) RespOk() {
+	req.Resp(H{
 		"ok": true,
 	})
 }
 
 // HTML responds with HTML
-func (srv *Server) HTML(data []byte) {
-	srv.writeCORSHeader()
-	srv.Write(data)
-	srv.Ctx.SetContentType("text/html; charset=utf8")
+func (req *Request) HTML(data []byte) {
+	req.writeCORSHeader()
+	req.Write(data)
+	req.Ctx.SetContentType("text/html; charset=utf8")
 }
 
 // JS responds with JS
-func (srv *Server) JS(data []byte) {
-	srv.writeCORSHeader()
-	srv.Write(data)
-	srv.Ctx.SetContentType("application/javascript; charset=utf8")
+func (req *Request) JS(data []byte) {
+	req.writeCORSHeader()
+	req.Write(data)
+	req.Ctx.SetContentType("application/javascript; charset=utf8")
 }
 
 // FileBlob responds with FileBlob
-func (srv *Server) FileBlob(data []byte, contentType string) {
-	srv.writeCORSHeader()
-	srv.Write(data)
-	srv.Ctx.SetContentType(contentType)
+func (req *Request) FileBlob(data []byte, contentType string) {
+	req.writeCORSHeader()
+	req.Write(data)
+	req.Ctx.SetContentType(contentType)
 }
 
 // File responds with File
-func (srv *Server) File(path string) {
-	srv.writeCORSHeader()
-	srv.Ctx.SendFile(path)
+func (req *Request) File(path string) {
+	req.writeCORSHeader()
+	req.Ctx.SendFile(path)
 }
 
 // GetParams return all params
-func (srv *Server) GetParams() map[string]string {
-	args := srv.Ctx.QueryArgs()
+func (req *Request) GetParams() map[string]string {
+	args := req.Ctx.QueryArgs()
 	res := map[string]string{}
 	args.VisitAll(func(key []byte, value []byte) {
 		res[string(key)] = string(value)
@@ -163,32 +163,32 @@ func (srv *Server) GetParams() map[string]string {
 }
 
 // GetParamOpt fetches optional param as string
-func (srv *Server) GetParamOpt(key string) string {
-	args := srv.Ctx.QueryArgs()
+func (req *Request) GetParamOpt(key string) string {
+	args := req.Ctx.QueryArgs()
 	param := string(args.Peek(key))
 
 	if param == "" {
-		param = string(srv.Ctx.PostArgs().Peek(key))
+		param = string(req.Ctx.PostArgs().Peek(key))
 	}
 
 	return param
 }
 
 // GetParam fetches required param as string
-func (srv *Server) GetParam(key string) string {
-	param := srv.GetParamOpt(key)
+func (req *Request) GetParam(key string) string {
+	param := req.GetParamOpt(key)
 	if param == "" {
-		srv.Err("param", "param "+key+" is required")
+		req.Err("param", "param "+key+" is required")
 	}
 	return param
 }
 
 // GetParamPagination parse param for pagination
-func (srv *Server) GetParamPagination(defCount int) *Pagination {
-	result := Pagination{srv: srv}
-	param := srv.GetParamOpt("from")
-	count := srv.GetParamInt("count")
-	result.Reverse = srv.GetParamBool("reverse")
+func (req *Request) GetParamPagination(defCount int) *Pagination {
+	result := Pagination{req: req}
+	param := req.GetParamOpt("from")
+	count := req.GetParamInt("count")
+	result.Reverse = req.GetParamBool("reverse")
 	if count == 0 {
 		count = defCount
 	}
@@ -205,7 +205,7 @@ func (srv *Server) GetParamPagination(defCount int) *Pagination {
 	if len(rows) > 1 {
 		objID, err := strconv.ParseInt(rows[1], 10, 64)
 		if err != nil {
-			srv.Err("param", "param from has invalid format for pagination")
+			req.Err("param", "param from has invalid format for pagination")
 		}
 		result.ObjectID = objID
 	}
@@ -213,8 +213,8 @@ func (srv *Server) GetParamPagination(defCount int) *Pagination {
 }
 
 // GetParamInt request param converted to int
-func (srv *Server) GetParamInt(key string) int {
-	args := srv.Ctx.QueryArgs()
+func (req *Request) GetParamInt(key string) int {
+	args := req.Ctx.QueryArgs()
 	param, err := args.GetUint(key)
 	if err != nil {
 		return 0
@@ -224,8 +224,8 @@ func (srv *Server) GetParamInt(key string) int {
 }
 
 // GetParamInt64 request param converted to int64
-func (srv *Server) GetParamInt64(key string) int64 {
-	args := srv.Ctx.QueryArgs()
+func (req *Request) GetParamInt64(key string) int64 {
+	args := req.Ctx.QueryArgs()
 	param := args.Peek(key)
 	i, err := strconv.ParseInt(string(param), 10, 64)
 	if err != nil {
@@ -235,8 +235,8 @@ func (srv *Server) GetParamInt64(key string) int64 {
 }
 
 // GetParamOptInt64 request param converted to int64
-func (srv *Server) GetParamOptInt64(key string) (int64, bool) {
-	args := srv.Ctx.QueryArgs()
+func (req *Request) GetParamOptInt64(key string) (int64, bool) {
+	args := req.Ctx.QueryArgs()
 	param := args.Peek(key)
 	if len(param) == 0 {
 		return 0, false
@@ -249,8 +249,8 @@ func (srv *Server) GetParamOptInt64(key string) (int64, bool) {
 }
 
 // GetParamFloat request param converted to float64
-func (srv *Server) GetParamFloat(key string) float64 {
-	args := srv.Ctx.QueryArgs()
+func (req *Request) GetParamFloat(key string) float64 {
+	args := req.Ctx.QueryArgs()
 	param, err := args.GetUfloat(key)
 	if err != nil {
 		return 0
@@ -260,8 +260,8 @@ func (srv *Server) GetParamFloat(key string) float64 {
 }
 
 // GetParamBool request param converted to bool
-func (srv *Server) GetParamBool(key string) bool {
-	args := srv.Ctx.QueryArgs()
+func (req *Request) GetParamBool(key string) bool {
+	args := req.Ctx.QueryArgs()
 	param := string(args.Peek(key))
 	if param == "1" || param == "true" || param == "y" {
 		return true
@@ -270,84 +270,84 @@ func (srv *Server) GetParamBool(key string) bool {
 }
 
 // GetBody return body of request
-func (srv *Server) GetBody() []byte {
-	return srv.Ctx.Request.Body()
+func (req *Request) GetBody() []byte {
+	return req.Ctx.Request.Body()
 }
 
 // ErrAuth sends auth error to client
-func (srv *Server) ErrAuth(code string, text interface{}) {
-	srv.ErrCode(401, code, text)
+func (req *Request) ErrAuth(code string, text interface{}) {
+	req.ErrCode(401, code, text)
 }
 
 // ErrForbidden this resource is prohibited for access
-func (srv *Server) ErrForbidden(code string, text interface{}) {
-	srv.ErrCode(403, code, text)
+func (req *Request) ErrForbidden(code string, text interface{}) {
+	req.ErrCode(403, code, text)
 }
 
 // ErrFlood too ofter, retry later
-func (srv *Server) ErrFlood(code string, text interface{}) {
-	srv.ErrCode(429, code, text)
+func (req *Request) ErrFlood(code string, text interface{}) {
+	req.ErrCode(429, code, text)
 }
 
 // ErrNotFound this resource not found
-func (srv *Server) ErrNotFound(code string, text interface{}) {
-	srv.ErrCode(404, code, text)
+func (req *Request) ErrNotFound(code string, text interface{}) {
+	req.ErrCode(404, code, text)
 }
 
 // Err http api error
-func (srv *Server) Err(code string, text interface{}) {
-	srv.ErrCode(400, code, text)
+func (req *Request) Err(code string, text interface{}) {
+	req.ErrCode(400, code, text)
 }
 
 // ErrServer meaning error doesnt depent on request and occur beacause of server error
-func (srv *Server) ErrServer(code string, text interface{}) {
-	srv.ErrCode(500, code, text)
+func (req *Request) ErrServer(code string, text interface{}) {
+	req.ErrCode(500, code, text)
 }
 
 // ErrMethod emmits when method not allowed
-func (srv *Server) ErrMethod(code string, text interface{}) {
-	srv.ErrCode(405, code, text)
+func (req *Request) ErrMethod(code string, text interface{}) {
+	req.ErrCode(405, code, text)
 }
 
 // ErrCustom will send error with custom fields
-func (srv *Server) ErrCustom(errCode int, code, desc string, data H) {
-	srv.Ctx.SetStatusCode(errCode)
-	srv.Ctx.SetContentType("application/json; charset=utf8")
-	srv.writeCORSHeader()
+func (req *Request) ErrCustom(errCode int, code, desc string, data H) {
+	req.Ctx.SetStatusCode(errCode)
+	req.Ctx.SetContentType("application/json; charset=utf8")
+	req.writeCORSHeader()
 
-	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
+	encoder := json.NewEncoder(req.Ctx.Response.BodyWriter())
 	encoder.SetEscapeHTML(false)
 
 	data["code"] = code
 	data["desc"] = desc
 	encoder.Encode(data)
 
-	if srv.http.OnError != nil {
-		srv.http.OnError(srv, code, desc)
+	if req.http.OnError != nil {
+		req.http.OnError(req, code, desc)
 	}
-	if srv.OnFail != nil {
-		srv.OnFail(errCode, code, desc)
+	if req.OnFail != nil {
+		req.OnFail(errCode, code, desc)
 	}
 	panic("skip")
 }
 
 // ErrCode send error with code
-func (srv *Server) ErrCode(httpCode int, code string, text interface{}) {
-	srv.SendError(httpCode, code, text)
-	if srv.http.OnError != nil {
-		srv.http.OnError(srv, code, fmt.Sprintf("%s", text))
+func (req *Request) ErrCode(httpCode int, code string, text interface{}) {
+	req.SendError(httpCode, code, text)
+	if req.http.OnError != nil {
+		req.http.OnError(req, code, fmt.Sprintf("%s", text))
 	}
-	if srv.OnFail != nil {
-		srv.OnFail(httpCode, code, text)
+	if req.OnFail != nil {
+		req.OnFail(httpCode, code, text)
 	}
 	panic("skip")
 }
 
 // SendError http api error
-func (srv *Server) SendError(httpCode int, code string, text interface{}) {
-	srv.Ctx.SetStatusCode(httpCode)
-	srv.Ctx.SetContentType("application/json; charset=utf8")
-	srv.writeCORSHeader()
+func (req *Request) SendError(httpCode int, code string, text interface{}) {
+	req.Ctx.SetStatusCode(httpCode)
+	req.Ctx.SetContentType("application/json; charset=utf8")
+	req.writeCORSHeader()
 
 	dataError := struct {
 		Code string `json:"code"`
@@ -357,12 +357,12 @@ func (srv *Server) SendError(httpCode int, code string, text interface{}) {
 		Desc: fmt.Sprintf("%s", text),
 	}
 
-	srv.WriteJSON(dataError)
+	req.WriteJSON(dataError)
 }
 
 // ErrJSONP http api error as JSONP
-func (srv *Server) ErrJSONP(text interface{}) {
-	srv.RespJSONP(struct {
+func (req *Request) ErrJSONP(text interface{}) {
+	req.RespJSONP(struct {
 		Error string `json:"error"`
 	}{
 		Error: fmt.Sprintf("%s", text),
@@ -371,39 +371,39 @@ func (srv *Server) ErrJSONP(text interface{}) {
 }
 
 // Redirect will return server-side redirect
-func (srv *Server) Redirect(uri string, statusCode int) {
-	srv.Ctx.Redirect(uri, statusCode)
+func (req *Request) Redirect(uri string, statusCode int) {
+	req.Ctx.Redirect(uri, statusCode)
 }
 
 // IsPost true if method is Post
-func (srv *Server) IsPost() bool {
-	return srv.Ctx.IsPost()
+func (req *Request) IsPost() bool {
+	return req.Ctx.IsPost()
 }
 
 // IsGet true if method is Get
-func (srv *Server) IsGet() bool {
-	return srv.Ctx.IsGet()
+func (req *Request) IsGet() bool {
+	return req.Ctx.IsGet()
 }
 
 // IsPut true if method is Put
-func (srv *Server) IsPut() bool {
-	return srv.Ctx.IsPut()
+func (req *Request) IsPut() bool {
+	return req.Ctx.IsPut()
 }
 
 // IsPatch true if method is Patch
-func (srv *Server) IsPatch() bool {
-	return bytes.Equal(srv.Ctx.Method(), []byte("PATCH"))
+func (req *Request) IsPatch() bool {
+	return bytes.Equal(req.Ctx.Method(), []byte("PATCH"))
 }
 
 // GetFile fetches file from multipart
-func (srv *Server) GetFile(name string) *File {
-	if !srv.IsPost() {
-		srv.Err("upload_file_error", "request method should be POST")
+func (req *Request) GetFile(name string) *File {
+	if !req.IsPost() {
+		req.Err("upload_file_error", "request method should be POST")
 		return nil
 	}
-	fileHeadler, err := srv.Ctx.FormFile(name)
+	fileHeadler, err := req.Ctx.FormFile(name)
 	if err != nil {
-		srv.Err("upload_file_error", err)
+		req.Err("upload_file_error", err)
 		return nil
 	}
 	file := File{}
@@ -412,11 +412,11 @@ func (srv *Server) GetFile(name string) *File {
 }
 
 // TryFile fetches file from multipart only if presented
-func (srv *Server) TryFile(name string) *File {
-	if !srv.IsPost() {
+func (req *Request) TryFile(name string) *File {
+	if !req.IsPost() {
 		return nil
 	}
-	fileHeadler, err := srv.Ctx.FormFile(name)
+	fileHeadler, err := req.Ctx.FormFile(name)
 	if err != nil {
 		return nil
 	}
@@ -426,53 +426,53 @@ func (srv *Server) TryFile(name string) *File {
 }
 
 // GetPathParam fetches required param from path
-func (srv *Server) GetPathParam(key string) string {
-	param, ok := srv.PathParams[key]
+func (req *Request) GetPathParam(key string) string {
+	param, ok := req.PathParams[key]
 	if !ok || param == "" {
 
-		srv.Err("param", "param "+key+" should be presented in PATH: "+srv.Path)
+		req.Err("param", "param "+key+" should be presented in PATH: "+req.Path)
 	}
 	return param
 }
 
 // GetPathParamInt fetches required param from path and converts to Int
-func (srv *Server) GetPathParamInt(key string) int64 {
-	param := srv.GetPathParam(key)
+func (req *Request) GetPathParamInt(key string) int64 {
+	param := req.GetPathParam(key)
 	paramInt, err := strconv.ParseInt(param, 10, 64)
 	if err != nil {
-		srv.Err("param", "param "+key+" presented in PATH should be int")
+		req.Err("param", "param "+key+" presented in PATH should be int")
 	}
 	return paramInt
 }
 
 // GetCookie will return cookie by name
-func (srv *Server) GetCookie(key string) string {
-	return string(srv.Ctx.Request.Header.Cookie(key))
+func (req *Request) GetCookie(key string) string {
+	return string(req.Ctx.Request.Header.Cookie(key))
 }
 
 // SetCookie will return cookie by name
-func (srv *Server) SetCookie(key string, value string) {
+func (req *Request) SetCookie(key string, value string) {
 	cookie := fasthttp.Cookie{}
 	cookie.SetKey(key)
 	cookie.SetValue(value)
 	cookie.SetExpire(time.Now().Add(time.Hour * 24 * 365 * 2))
 	cookie.SetPath("/")
-	srv.Ctx.Response.Header.SetCookie(&cookie)
+	req.Ctx.Response.Header.SetCookie(&cookie)
 }
 
 // GetHeader will return header by name
-func (srv *Server) GetHeader(key string) string {
-	return string(srv.Ctx.Request.Header.Peek(key))
+func (req *Request) GetHeader(key string) string {
+	return string(req.Ctx.Request.Header.Peek(key))
 }
 
 // SetHeader will set header
-func (srv *Server) SetHeader(key string, value string) {
-	srv.Ctx.Response.Header.Set(key, value)
+func (req *Request) SetHeader(key string, value string) {
+	req.Ctx.Response.Header.Set(key, value)
 }
 
 // GetLanguage will return short form of language browser use
-func (srv *Server) GetLanguage() string {
-	language := srv.GetHeader("Accept-Language")
+func (req *Request) GetLanguage() string {
+	language := req.GetHeader("Accept-Language")
 	if len(language) < 2 {
 		return "en"
 	}
@@ -482,57 +482,57 @@ func (srv *Server) GetLanguage() string {
 }
 
 // GetUserAgent returns user agent header
-func (srv *Server) GetUserAgent() string {
-	ua := srv.GetHeader("X-User-Agent")
+func (req *Request) GetUserAgent() string {
+	ua := req.GetHeader("X-User-Agent")
 	if ua == "" {
-		ua = srv.GetHeader("User-Agent")
+		ua = req.GetHeader("User-Agent")
 	}
 	return ua
 }
 
 // Method will return method from requiest header
-func (srv *Server) Method() string {
-	return string(srv.Ctx.Method())
+func (req *Request) Method() string {
+	return string(req.Ctx.Method())
 }
 
-// Check perform check and trigger srv.Err if err is not nil
-func (srv *Server) Check(err error, text ...string) {
+// Check perform check and trigger req.Err if err is not nil
+func (req *Request) Check(err error, text ...string) {
 	if err != nil {
 		if len(text) > 0 {
 			if len(text) > 1 {
-				srv.Err(text[0], text[1])
+				req.Err(text[0], text[1])
 			} else {
-				srv.Err(text[0], err)
+				req.Err(text[0], err)
 			}
 		} else {
-			srv.ErrServer("request_failed", err)
+			req.ErrServer("request_failed", err)
 		}
 	}
 }
 
 // GetSessionID return Session-ID hearder int64
-func (srv *Server) GetSessionID() int64 {
-	sessionIDStr := srv.GetHeader("Session-ID")
+func (req *Request) GetSessionID() int64 {
+	sessionIDStr := req.GetHeader("Session-ID")
 	if sessionIDStr == "" {
-		sessionIDStr = srv.GetParamOpt("session-id")
+		sessionIDStr = req.GetParamOpt("session-id")
 	}
 	return I64(sessionIDStr)
 }
 
 // GetIP will return remove ip of request
-func (srv *Server) GetIP() net.IP {
-	return srv.Ctx.RemoteIP()
+func (req *Request) GetIP() net.IP {
+	return req.Ctx.RemoteIP()
 }
 
 // Background will run anonymous goroutine in background with proper error catching
-func (srv *Server) Background(handler func()) {
+func (req *Request) Background(handler func()) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				apiErrStr := fmt.Sprintf("%v", r)
 				if apiErrStr != "skip" {
-					if srv.http.OnPanic != nil {
-						srv.http.OnPanic(srv, apiErrStr+"\n\n"+string(debug.Stack()))
+					if req.http.OnPanic != nil {
+						req.http.OnPanic(req, apiErrStr+"\n\n"+string(debug.Stack()))
 					} else {
 						fmt.Println("UNCATCHED PANIC", r)
 						debug.PrintStack()
@@ -545,30 +545,30 @@ func (srv *Server) Background(handler func()) {
 }
 
 // EventSource starts an event server
-func (srv *Server) EventSource(callback func(*ServerEvents)) {
-	srv.Ctx.SetContentType("text/event-stream; charset=UTF-8")
-	srv.Ctx.Response.Header.Set("Cache-Control", "no-cache")
-	srv.Ctx.Response.Header.Set("Connection", "keep-alive")
-	srv.Ctx.Response.Header.Set("Transfer-Encoding", "chunked")
-	srv.writeCORSHeader()
-	if srv.http.CORS != "" {
-		srv.Ctx.Response.Header.Set("Access-Control-Expose-Headers", "*")
-		srv.Ctx.Response.Header.Set("Access-Control-Allow-Credentials", "true")
+func (req *Request) EventSource(callback func(*ServerEvents)) {
+	req.Ctx.SetContentType("text/event-stream; charset=UTF-8")
+	req.Ctx.Response.Header.Set("Cache-Control", "no-cache")
+	req.Ctx.Response.Header.Set("Connection", "keep-alive")
+	req.Ctx.Response.Header.Set("Transfer-Encoding", "chunked")
+	req.writeCORSHeader()
+	if req.http.CORS != "" {
+		req.Ctx.Response.Header.Set("Access-Control-Expose-Headers", "*")
+		req.Ctx.Response.Header.Set("Access-Control-Allow-Credentials", "true")
 	}
 
-	lastEventIDStr := srv.GetHeader("Last-Event-ID")
+	lastEventIDStr := req.GetHeader("Last-Event-ID")
 	if lastEventIDStr == "" {
-		lastEventIDStr = srv.GetParamOpt("last-event-id")
+		lastEventIDStr = req.GetParamOpt("last-event-id")
 	}
-	sessionID := srv.GetSessionID()
+	sessionID := req.GetSessionID()
 
-	srv.Ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
+	req.Ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
 		defer func() {
 			if r := recover(); r != nil {
 				apiErrStr := fmt.Sprintf("%v", r)
 				if apiErrStr != "skip" {
-					if srv.http.OnPanic != nil {
-						srv.http.OnPanic(srv, apiErrStr+"\n\n"+string(debug.Stack()))
+					if req.http.OnPanic != nil {
+						req.http.OnPanic(req, apiErrStr+"\n\n"+string(debug.Stack()))
 					} else {
 						fmt.Println("UNCATCHED PANIC", r)
 						debug.PrintStack()
@@ -586,64 +586,64 @@ func (srv *Server) EventSource(callback func(*ServerEvents)) {
 }
 
 // Event sends event to the user
-func (srv *Server) Event(data interface{}) {
-	encoder := json.NewEncoder(srv.Ctx.Response.BodyWriter())
+func (req *Request) Event(data interface{}) {
+	encoder := json.NewEncoder(req.Ctx.Response.BodyWriter())
 	encoder.SetEscapeHTML(false)
 
 	err := encoder.Encode(data)
 	if err != nil {
-		srv.Err("system", err)
+		req.Err("system", err)
 	}
 }
 
 // ParseInt64List parses []int64 from json body
-func (srv *Server) ParseInt64List() []int64 {
+func (req *Request) ParseInt64List() []int64 {
 	input := []int64{}
-	err := json.Unmarshal(srv.GetBody(), &input)
+	err := json.Unmarshal(req.GetBody(), &input)
 	if err != nil {
-		srv.Err("user_invalid", "Body should be json list of strings")
+		req.Err("user_invalid", "Body should be json list of strings")
 	}
 	return input
 }
 
 // ParseStrList parses []string from json body
-func (srv *Server) ParseStrList() []string {
+func (req *Request) ParseStrList() []string {
 	input := []string{}
-	err := json.Unmarshal(srv.GetBody(), &input)
+	err := json.Unmarshal(req.GetBody(), &input)
 	if err != nil {
-		srv.Err("user_invalid", "Body should be json list of strings")
+		req.Err("user_invalid", "Body should be json list of strings")
 	}
 	return input
 }
 
 // ParseBody return H object of input object
-func (srv *Server) ParseBody() H {
+func (req *Request) ParseBody() H {
 	input := H{}
-	err := json.Unmarshal(srv.GetBody(), &input)
+	err := json.Unmarshal(req.GetBody(), &input)
 	if err != nil {
-		srv.Err("user_object", "Body should be json")
+		req.Err("user_object", "Body should be json")
 	}
 	return input
 }
 
 // FillBody allow to fill a struct with data from body
-func (srv *Server) FillBody(input interface{}) {
-	err := json.Unmarshal(srv.GetBody(), input)
+func (req *Request) FillBody(input interface{}) {
+	err := json.Unmarshal(req.GetBody(), input)
 	if err != nil {
-		srv.Err("user_object", "Body should be json")
+		req.Err("user_object", "Body should be json")
 	}
 }
 
 // Env will return environment for
-func (srv *Server) Env() *Environment {
-	return Env(srv)
+func (req *Request) Env() *Environment {
+	return Env(req)
 }
 
 // GetRealIP will return ip address of user
-func (srv *Server) GetRealIP() net.IP {
-	ip := srv.GetHeader("X-Real-IP")
+func (req *Request) GetRealIP() net.IP {
+	ip := req.GetHeader("X-Real-IP")
 	if ip == "" {
-		ipFWD := srv.GetHeader("X-Forwarded-For")
+		ipFWD := req.GetHeader("X-Forwarded-For")
 		fwdips := strings.Split(ipFWD, ", ")
 		if len(fwdips) > 0 {
 			ip = fwdips[0]
@@ -672,15 +672,15 @@ func (h *HTTP) IsStarted() bool {
 // Serve start handling HTTP requests using fasthttp
 func (h *HTTP) Serve(portHTTP string) {
 	ctxHanler := func(ctx *fasthttp.RequestCtx) {
-		srv := Server{
+		req := Request{
 			Ctx:  ctx,
 			Path: string(ctx.Path()),
 			http: h,
 		}
 		if h.GZip {
-			gzipHeader := srv.GetHeader("Accept-Encoding")
+			gzipHeader := req.GetHeader("Accept-Encoding")
 			if gzipHeader == "*" || strings.Contains(gzipHeader, "gzip") {
-				srv.supportGZip = true
+				req.supportGZip = true
 			}
 		}
 		defer func() {
@@ -688,46 +688,45 @@ func (h *HTTP) Serve(portHTTP string) {
 				apiErrStr := fmt.Sprintf("%v", r)
 				if apiErrStr != "skip" {
 					if h.OnPanic != nil {
-						h.OnPanic(&srv, apiErrStr+"\n\n"+string(debug.Stack()))
+						h.OnPanic(&req, apiErrStr+"\n\n"+string(debug.Stack()))
 					} else {
 						fmt.Println("UNCATCHED PANIC", r)
 						debug.PrintStack()
 					}
 					// this error do not panic
-					srv.SendError(500, "fatal", "runtime error")
+					req.SendError(500, "fatal", "runtime error")
 				}
 			}
 		}()
-		//start := time.Now()
-		methodStr := srv.Method()
+		methodStr := req.Method()
 		if methodStr == "OPTIONS" {
 			if h.OnOptions != nil {
-				h.OnOptions(&srv)
+				h.OnOptions(&req)
 				return
 			}
-			if srv.http.CORS != "" {
-				srv.SetHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PATCH, UPDATE")
-				srv.SetHeader("Access-Control-Allow-Headers", "*")
-				srv.RespOk()
+			if req.http.CORS != "" {
+				req.SetHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PATCH, UPDATE")
+				req.SetHeader("Access-Control-Allow-Headers", "*")
+				req.RespOk()
 				return
 			}
 		}
 		method, ok := Methods[methodStr]
 		if !ok {
-			srv.Err("invalid_request", "Unsupported method")
+			req.Err("invalid_request", "Unsupported method")
 			return
 		}
 
-		cb, params, err := h.handlers.Route(method, srv.Path)
+		cb, params, err := h.handlers.Route(method, req.Path)
 		if cb == nil {
-			srv.Err("not_found", err)
+			req.Err("not_found", err)
 			return
 		}
-		srv.PathParams = params
-		if srv.http.OnRequest != nil {
-			srv.http.OnRequest(&srv)
+		req.PathParams = params
+		if req.http.OnRequest != nil {
+			req.http.OnRequest(&req)
 		}
-		cb(&srv)
+		cb(&req)
 		//elapsed := time.Since(start)
 	}
 
@@ -758,7 +757,7 @@ func (h *HTTP) Serve(portHTTP string) {
 }
 
 // Handle add callback to
-func (h *HTTP) Handle(path string, callback func(srv *Server)) {
+func (h *HTTP) Handle(path string, callback func(req *Request)) {
 	h.handlers.Handle(Methods["*"], path, callback)
 }
 

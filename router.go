@@ -20,15 +20,15 @@ type routerTree struct {
 	Tree    map[string]*routerTree
 	Methods map[int]routerMethodHandler
 	//Keys    []string
-	//Handler map[int]func(srv *Server)
+	//Handler map[int]func(req *Request)
 }
 
 type routerMethodHandler struct {
 	Keys   []string
-	Handle func(srv *Server)
+	Handle func(req *Request)
 }
 
-func (p *routerTree) PushHandler(method int, parts []string, handler func(srv *Server), keys []string) {
+func (p *routerTree) PushHandler(method int, parts []string, handler func(req *Request), keys []string) {
 	if len(parts) == 0 {
 		methodHandler := routerMethodHandler{
 			Keys:   keys,
@@ -61,7 +61,7 @@ func (p *routerTree) PushHandler(method int, parts []string, handler func(srv *S
 	branch.PushHandler(method, parts[1:], handler, keys)
 }
 
-func (p *routerTree) getHandler(method int, parts []string, values []string) (func(srv *Server), []string, []string, error) {
+func (p *routerTree) getHandler(method int, parts []string, values []string) (func(req *Request), []string, []string, error) {
 	if len(parts) == 0 {
 		if p.Methods == nil {
 			return nil, nil, nil, errors.New("This path is not supported")
@@ -117,12 +117,12 @@ func (p *routerTree) getHandler(method int, parts []string, values []string) (fu
 
 // public methods here
 
-func (p *routerTree) Handle(method int, path string, handler func(srv *Server)) {
+func (p *routerTree) Handle(method int, path string, handler func(req *Request)) {
 	parts := strings.Split(path, "/")
 	p.PushHandler(method, parts, handler, []string{})
 }
 
-func (p *routerTree) Route(method int, path string) (func(srv *Server), map[string]string, error) {
+func (p *routerTree) Route(method int, path string) (func(req *Request), map[string]string, error) {
 	parts := strings.Split(path, "/")
 	cb, keys, values, err := p.getHandler(method, parts, []string{})
 	params := map[string]string{}
