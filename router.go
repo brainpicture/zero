@@ -2,6 +2,7 @@ package zero
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -64,7 +65,7 @@ func (p *routerTree) PushHandler(method int, parts []string, handler func(req *R
 func (p *routerTree) getHandler(method int, parts []string, values []string) (func(req *Request), []string, []string, error) {
 	if len(parts) == 0 {
 		if p.Methods == nil {
-			return nil, nil, nil, errors.New("This path is not supported")
+			return nil, nil, nil, errors.New("This path is not supported (methods are nil)")
 		}
 		if method == Methods["*"] {
 			for _, m := range p.Methods {
@@ -112,7 +113,7 @@ func (p *routerTree) getHandler(method int, parts []string, values []string) (fu
 		values = append(values, row)
 		return branch.getHandler(method, parts[1:], values)
 	}
-	return nil, nil, nil, errors.New("This path is not supported")
+	return nil, nil, nil, errors.New("This path is not supported (" + strings.Join(parts, "/") + ")")
 }
 
 // public methods here
@@ -125,6 +126,10 @@ func (p *routerTree) Handle(method int, path string, handler func(req *Request))
 func (p *routerTree) Route(method int, path string) (func(req *Request), map[string]string, error) {
 	parts := strings.Split(path, "/")
 	cb, keys, values, err := p.getHandler(method, parts, []string{})
+	if err != nil {
+		fmt.Println("PATH ERROR", err)
+		fmt.Println("PATH ERROR", method, "path:", path)
+	}
 	params := map[string]string{}
 	for n, key := range keys {
 		if len(values) > n {

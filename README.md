@@ -4,7 +4,7 @@ toolkit with the most common functions for backend development
 ## Examples
 Start an http server
 ```
-zero.Handle("/test", func(srv *zero.Server) {
+zero.Handle("/test", func(srv *zero.Request) {
   name := req.GetParam("name")
   req.HTML([]byte("Hello "+name))
 })
@@ -13,7 +13,7 @@ zero.Serve("8080")
 
 Start websocket server
 ```
-zero.Handle("/websocket", func(srv *zero.Server) {
+zero.Handle("/websocket", func(srv *zero.Request) {
   soc := req.UpgradeWS()
   soc.HandleAll()
 })
