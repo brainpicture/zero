@@ -107,6 +107,10 @@ func (req *Request) StreamBody(reader io.Reader, contentLength int64, contentTyp
 func (req *Request) RespJSONP(data interface{}) {
 	req.writeCORSHeader()
 	cbName := req.GetParam("jsoncallback")
+	if cbName == "" {
+		req.Resp(data)
+		return
+	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		req.Err("system", err)
@@ -361,12 +365,21 @@ func (req *Request) SendError(httpCode int, code string, text interface{}) {
 }
 
 // ErrJSONP http api error as JSONP
-func (req *Request) ErrJSONP(text interface{}) {
+func (req *Request) ErrJSONP(code string, text interface{}) {
+	desc := fmt.Sprintf("%s", text)
 	req.RespJSONP(struct {
+		Code  string `json:"code"`
 		Error string `json:"error"`
 	}{
-		Error: fmt.Sprintf("%s", text),
+		Code: code,
+		Error: desc,
 	})
+	if req.http.OnError != nil {
+		req.http.OnError(req, code, desc)
+	}
+	if req.OnFail != nil {
+		req.OnFail(400, code, desc)
+	}
 	panic("skip")
 }
 
