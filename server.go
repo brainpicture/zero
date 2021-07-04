@@ -106,7 +106,7 @@ func (req *Request) StreamBody(reader io.Reader, contentLength int64, contentTyp
 // RespJSONP writes any data as JSONP to HTTP stream
 func (req *Request) RespJSONP(data interface{}) {
 	req.writeCORSHeader()
-	cbName := req.GetParam("jsoncallback")
+	cbName := req.GetParamOpt("jsoncallback")
 	if cbName == "" {
 		req.Resp(data)
 		return
