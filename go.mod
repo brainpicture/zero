@@ -9,5 +9,5 @@ require (
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/sideshow/apns2 v0.20.0
-	github.com/valyala/fasthttp v1.16.0
+	github.com/valyala/fasthttp v1.28.0
 )
