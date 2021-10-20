@@ -15,6 +15,8 @@ var iosProduction = apns2.Client{}
 var iosSandbox = apns2.Client{}
 var iosBundleProd = ""
 var iosBundleSandbox = ""
+var iosVoipBundleSandbox = ""
+var iosVoipBundleProd = ""
 
 // Push describes object for push notifications
 type Push struct {
@@ -49,7 +51,7 @@ type apnsMessage struct {
 }
 
 // Send send push to the device
-func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
+func (push *Push) Send(platform, deviceToken string, sandbox, voip bool) error {
 	if platform == "android" {
 		client := fcm.NewFcmClient(androidServerKey)
 		client.SetPriority(fcm.Priority_HIGH)
@@ -73,6 +75,9 @@ func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
 		}
 	} else if platform == "ios" {
 		notification := &apns2.Notification{}
+		if voip {
+			notification.PushType = apns2.PushTypeAlert
+		}
 
 		notification.DeviceToken = deviceToken
 		if push.Bundle != "" {
@@ -151,7 +156,7 @@ func (push *Push) Send(platform, deviceToken string, sandbox bool) error {
 }
 
 // PushInitIOS init push notifications for ios
-func PushInitIOS(certProduction, passProduction, bundleProd, certSandbox, passSandbox, bundleSandbox string) {
+func PushInitIOS(certProduction, passProduction, bundleProd, bundleVoipProd, certSandbox, passSandbox, bundleVoipSandbox, bundleSandbox string) {
 	cert, err := certificate.FromP12File(certProduction, passProduction)
 	if err != nil {
 		fmt.Println("Production Cert Error:", err)
@@ -159,6 +164,7 @@ func PushInitIOS(certProduction, passProduction, bundleProd, certSandbox, passSa
 		iosProduction = *apns2.NewClient(cert).Production()
 	}
 	iosBundleProd = bundleProd
+	iosVoipBundleProd = bundleVoipProd
 
 	cert, err = certificate.FromP12File(certSandbox, passSandbox)
 	if err != nil {
@@ -167,6 +173,7 @@ func PushInitIOS(certProduction, passProduction, bundleProd, certSandbox, passSa
 		iosSandbox = *apns2.NewClient(cert).Development()
 	}
 	iosBundleSandbox = bundleSandbox
+	iosVoipBundleSandbox = bundleVoipSandbox
 }
 
 // PushInitAndroid init push notifications for android
