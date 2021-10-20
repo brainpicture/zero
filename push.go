@@ -80,7 +80,7 @@ func (push *Push) Send(platform, deviceToken string, sandbox, voip bool) error {
 			if sandbox {
 				notification.Topic = iosVoipBundleSandbox
 			} else {
-				notification.Topic = iosBundleProd
+				notification.Topic = iosVoipBundleProd
 			}
 		}
 
