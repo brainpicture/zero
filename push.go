@@ -76,7 +76,7 @@ func (push *Push) Send(platform, deviceToken string, sandbox, voip bool) error {
 	} else if platform == "ios" {
 		notification := &apns2.Notification{}
 		if voip {
-			notification.PushType = apns2.PushTypeAlert
+			notification.PushType = apns2.PushTypeVOIP
 			if sandbox {
 				notification.Topic = iosVoipBundleSandbox
 			} else {
